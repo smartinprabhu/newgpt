@@ -103,9 +103,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
     setIsLaunching(true);
 
-    // Simulate launching and redirect
+    // Simulate launching and redirect to new tab
     setTimeout(() => {
-      window.location.href = 'http://localhost:3001';
+      window.open('http://localhost:3001', '_blank');
+      setIsLaunching(false);
+      onClose(); // Close the drawer after opening the new tab
     }, 1500);
   };
 
