@@ -240,11 +240,12 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             <div className="space-y-3">
               <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
 
-              <DropdownMenu modal={false}>
+              <DropdownMenu modal={false} open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     className="w-full justify-between h-auto min-h-[44px] px-4 py-3"
+                    onClick={() => console.log('🖱️ Button clicked, businessUnits:', businessUnits.length)}
                   >
                     <span className="flex items-center gap-2 text-left flex-1">
                       {selectedBU ? (
@@ -263,9 +264,10 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
-                  className="w-[500px] max-h-[500px] overflow-y-auto z-[2100]"
+                  className="w-[500px] max-h-[500px] overflow-y-auto"
                   sideOffset={5}
                   align="start"
+                  style={{ zIndex: 2100 }}
                 >
                   <DropdownMenuLabel>Business Units & Lines of Business</DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -279,8 +281,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                       <React.Fragment key={bu.code}>
                         {/* Business Unit Header - Always Clickable */}
                         <DropdownMenuItem
-                          onClick={() => handleBUSelect(bu)}
-                          className="font-medium bg-muted/50 hover:bg-muted"
+                          onClick={() => {
+                            console.log('✅ BU selected:', bu.display_name);
+                            handleBUSelect(bu);
+                          }}
+                          className="font-medium bg-muted/50 hover:bg-muted cursor-pointer"
                         >
                           <Building2 className="h-4 w-4 mr-2 text-primary" />
                           <div className="flex flex-col flex-1">
@@ -300,8 +305,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                         {bu.lobs && bu.lobs.length > 0 && bu.lobs.map((lob) => (
                           <DropdownMenuItem
                             key={lob.id}
-                            onClick={() => handleLOBSelect(bu, lob)}
-                            className="pl-8"
+                            onClick={() => {
+                              console.log('✅ LOB selected:', lob.name);
+                              handleLOBSelect(bu, lob);
+                            }}
+                            className="pl-8 cursor-pointer"
                           >
                             <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
                             <div className="flex flex-col flex-1">
