@@ -12,34 +12,68 @@ const NewAgentPage = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [businessDataList, setBusinessDataList] = useState([]);
+  const [businessUnitsWithLOBs, setBusinessUnitsWithLOBs] = useState([]);
 
   const WEBAPPAPIURL = '/api/v2/';
 
-  // Fetch business units on mount
+  // Fetch business units and LOBs on mount
   useEffect(() => {
-    const fetchBusinessData = async () => {
-      const params = new URLSearchParams({
-        offset: '0',
-        domain: '[]',
-        order: 'id ASC',
-        fields: '["display_name","code","description","sequence","preferred_algorithm"]',
-        model: 'business.unit',
-      });
-
+    const fetchBusinessDataAndLOBs = async () => {
       try {
-        const response = await axios.get(`${WEBAPPAPIURL}search_read?${params.toString()}`, {
+        // Fetch Business Units
+        const buParams = new URLSearchParams({
+          offset: '0',
+          domain: '[]',
+          order: 'id ASC',
+          fields: '["display_name","code","description","sequence","preferred_algorithm"]',
+          model: 'business.unit',
+        });
+
+        const buResponse = await axios.get(`${WEBAPPAPIURL}search_read?${buParams.toString()}`, {
           headers: {
             Authorization: `Bearer ${AuthService.getAccessToken()}`
           },
         });
-        setBusinessDataList(response?.data ?? []);
+
+        const businessUnits = buResponse?.data ?? [];
+        setBusinessDataList(businessUnits);
+
+        // Fetch LOBs
+        const lobParams = new URLSearchParams({
+          offset: '0',
+          domain: '[]',
+          order: 'id ASC',
+          fields: '["name","code","business_unit","description"]',
+          model: 'line_business_lob',
+        });
+
+        const lobResponse = await axios.get(`${WEBAPPAPIURL}search_read?${lobParams.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${AuthService.getAccessToken()}`
+          },
+        });
+
+        const lobs = lobResponse?.data ?? [];
+
+        // Organize LOBs under their respective Business Units
+        const structured = businessUnits.map((bu: any) => ({
+          ...bu,
+          lobs: lobs.filter((lob: any) => {
+            // business_unit is typically [id, name] array from Odoo
+            const buId = Array.isArray(lob.business_unit) ? lob.business_unit[0] : lob.business_unit;
+            return buId === bu.id;
+          })
+        }));
+
+        setBusinessUnitsWithLOBs(structured);
       } catch (error) {
-        console.error('Error fetching business units:', error);
+        console.error('Error fetching business units and LOBs:', error);
         setBusinessDataList([]);
+        setBusinessUnitsWithLOBs([]);
       }
     };
 
-    fetchBusinessData();
+    fetchBusinessDataAndLOBs();
   }, []);
 
   const agents = [
