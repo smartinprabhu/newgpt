@@ -456,6 +456,102 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
           </div>
         </div>
       </div>
+
+      {/* Response Popup Dialog */}
+      {showResponse && (
+        <>
+          {/* Popup Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[3000] transition-opacity duration-300"
+            onClick={() => setShowResponse(false)}
+          />
+
+          {/* Popup Content */}
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-3xl max-h-[80vh] bg-background border border-border rounded-xl shadow-2xl z-[3001] overflow-hidden">
+            {/* Popup Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border bg-background/95">
+              <div className="flex items-center gap-3">
+                {error ? (
+                  <>
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">Error</h3>
+                      <p className="text-sm text-muted-foreground">Failed to get response</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">Agent Response</h3>
+                      <p className="text-sm text-muted-foreground">{agent.title}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowResponse(false)}
+                className="rounded-full hover:bg-accent"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Popup Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-160px)] bg-background">
+              {error ? (
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+                  <p className="text-red-800 dark:text-red-200 whitespace-pre-wrap">{error}</p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/50 dark:bg-muted/30 p-4">
+                  <pre className="text-foreground whitespace-pre-wrap font-mono text-sm">
+                    {apiResponse}
+                  </pre>
+                </div>
+              )}
+
+              {/* Context Info */}
+              {selectedBU && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Request Context:</h4>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p><span className="font-medium">Business Unit:</span> {selectedBU.display_name}</p>
+                    {selectedLOB && <p><span className="font-medium">LOB:</span> {selectedLOB.name}</p>}
+                    <p><span className="font-medium">Prompt:</span> {prompt}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Popup Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-background/95">
+              <Button
+                variant="outline"
+                onClick={() => setShowResponse(false)}
+                className="border-border hover:bg-accent"
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowResponse(false);
+                  setPrompt('');
+                }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                Start New Request
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
