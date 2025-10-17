@@ -52,6 +52,16 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [isLaunching, setIsLaunching] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Debug logging
+  useEffect(() => {
+    if (isOpen) {
+      console.log('🚀 AgentLauncher opened');
+      console.log('📦 businessUnits prop:', businessUnits);
+      console.log('📊 businessUnits length:', businessUnits?.length);
+      console.log('🔍 businessUnits detail:', JSON.stringify(businessUnits, null, 2));
+    }
+  }, [isOpen, businessUnits]);
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
