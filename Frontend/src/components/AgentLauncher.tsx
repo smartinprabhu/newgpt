@@ -64,26 +64,47 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   // Suggested prompts based on agent type
   const getSuggestions = () => {
     switch (agent.title) {
-      case 'Forecasting Agent':
+      case 'Forecasting':
         return [
-          'Generate a 4-week forecast',
-          'Show me historical trends',
-          'Predict next quarter demand',
-          'Analyze seasonality patterns'
+          'Generate a comprehensive forecast',
+          'Show me demand trends',
+          'Predict next quarter volume',
+          'Analyze historical patterns'
         ];
-      case 'Capacity Planning':
+      case 'Short Term Forecasting':
         return [
-          'Optimize workforce allocation',
-          'Show capacity gaps',
-          'Strategic planning for Q2',
-          'Resource utilization analysis'
+          'Generate 2-week forecast',
+          'Predict next week demand',
+          'Weekly trend analysis',
+          'Immediate volume predictions'
         ];
-      case 'What If / Scenario':
+      case 'Long Term Forecasting':
         return [
-          'Compare different scenarios',
-          'Impact of 20% demand increase',
-          'Best case vs worst case',
-          'Sensitivity analysis'
+          'Generate 6-month forecast',
+          'Predict quarterly demand',
+          'Long-term trend analysis',
+          'Annual volume projections'
+        ];
+      case 'Tactical Capacity Planning':
+        return [
+          'Optimize this week\'s schedule',
+          'Short-term resource allocation',
+          'Daily staffing requirements',
+          'Immediate capacity gaps'
+        ];
+      case 'Strategic Capacity Planning':
+        return [
+          'Long-term workforce planning',
+          'Quarterly capacity strategy',
+          'Infrastructure requirements',
+          'Annual resource planning'
+        ];
+      case 'What If & Scenario Analyst':
+        return [
+          'Compare multiple scenarios',
+          'Impact of 20% volume increase',
+          'Best vs worst case analysis',
+          'Sensitivity testing'
         ];
       case 'Occupancy Modeling':
         return [
