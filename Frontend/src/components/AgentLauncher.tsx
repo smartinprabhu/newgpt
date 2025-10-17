@@ -257,7 +257,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
-                  className="w-[500px] max-h-[500px] overflow-y-auto"
+                  className="w-[500px] max-h-[500px] overflow-y-auto z-[2100]"
                   sideOffset={5}
                   align="start"
                 >
