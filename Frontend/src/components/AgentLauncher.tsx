@@ -257,11 +257,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
-                  className="w-[400px] max-h-[400px] overflow-y-auto z-[2100]"
+                  className="w-[500px] max-h-[500px] overflow-y-auto"
                   sideOffset={5}
                   align="start"
                 >
-                  <DropdownMenuLabel>Business Units</DropdownMenuLabel>
+                  <DropdownMenuLabel>Business Units & Lines of Business</DropdownMenuLabel>
                   <DropdownMenuSeparator />
 
                   {businessUnits.length === 0 ? (
@@ -271,60 +271,44 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   ) : (
                     businessUnits.map((bu) => (
                       <React.Fragment key={bu.code}>
-                        {bu.lobs && bu.lobs.length > 0 ? (
-                          // BU with LOBs - show as submenu
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{bu.display_name}</span>
-                                  <span className="text-xs text-muted-foreground">{bu.lobs.length} LOB{bu.lobs.length !== 1 ? 's' : ''}</span>
-                                </div>
-                              </div>
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto z-[2110]">
-                              {/* Option to select BU without specific LOB */}
-                              <DropdownMenuItem
-                                onClick={() => handleBUSelect(bu)}
-                                className="font-medium"
-                              >
-                                <Building2 className="h-4 w-4 mr-2 text-primary" />
-                                All of {bu.display_name}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
+                        {/* Business Unit Header - Always Clickable */}
+                        <DropdownMenuItem
+                          onClick={() => handleBUSelect(bu)}
+                          className="font-medium bg-muted/50 hover:bg-muted"
+                        >
+                          <Building2 className="h-4 w-4 mr-2 text-primary" />
+                          <div className="flex flex-col flex-1">
+                            <span>{bu.display_name}</span>
+                            {bu.description && (
+                              <span className="text-xs font-normal text-muted-foreground">{bu.description}</span>
+                            )}
+                          </div>
+                          {bu.lobs && bu.lobs.length > 0 && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {bu.lobs.length} LOB{bu.lobs.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </DropdownMenuItem>
 
-                              {/* Individual LOBs */}
-                              {bu.lobs.map((lob) => (
-                                <DropdownMenuItem
-                                  key={lob.id}
-                                  onClick={() => handleLOBSelect(bu, lob)}
-                                >
-                                  <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
-                                  <div className="flex flex-col">
-                                    <span>{lob.name}</span>
-                                    {lob.description && (
-                                      <span className="text-xs text-muted-foreground">{lob.description}</span>
-                                    )}
-                                  </div>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        ) : (
-                          // BU without LOBs - direct selection
+                        {/* LOBs under this BU - Indented */}
+                        {bu.lobs && bu.lobs.length > 0 && bu.lobs.map((lob) => (
                           <DropdownMenuItem
-                            onClick={() => handleBUSelect(bu)}
+                            key={lob.id}
+                            onClick={() => handleLOBSelect(bu, lob)}
+                            className="pl-8"
                           >
-                            <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                            <div className="flex flex-col">
-                              <span className="font-medium">{bu.display_name}</span>
-                              {bu.description && (
-                                <span className="text-xs text-muted-foreground">{bu.description}</span>
+                            <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <div className="flex flex-col flex-1">
+                              <span>{lob.name}</span>
+                              {lob.description && (
+                                <span className="text-xs text-muted-foreground">{lob.description}</span>
                               )}
                             </div>
                           </DropdownMenuItem>
-                        )}
+                        ))}
+
+                        {/* Separator between BUs */}
+                        <DropdownMenuSeparator />
                       </React.Fragment>
                     ))
                   )}
