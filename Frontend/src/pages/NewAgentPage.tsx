@@ -103,8 +103,8 @@ const NewAgentPage = () => {
       icon: <TrendingUp className="h-6 w-6" />,
       iconBg: 'bg-cyan-100 dark:bg-cyan-900/30',
       iconColor: 'text-cyan-600 dark:text-cyan-400',
-      link: null,
-      available: false
+      link: 'http://localhost:3001',
+      available: true
     },
     {
       title: 'Long Term Forecasting',
@@ -113,8 +113,8 @@ const NewAgentPage = () => {
       icon: <Calendar className="h-6 w-6" />,
       iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
       iconColor: 'text-indigo-600 dark:text-indigo-400',
-      link: null,
-      available: false
+      link: 'http://localhost:3001',
+      available: true
     },
     {
       title: 'Tactical Capacity Planning',
