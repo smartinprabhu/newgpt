@@ -13,6 +13,7 @@ const NewAgentPage = () => {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [businessDataList, setBusinessDataList] = useState([]);
   const [businessUnitsWithLOBs, setBusinessUnitsWithLOBs] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const WEBAPPAPIURL = '/api/v2/';
 
@@ -21,6 +22,7 @@ const NewAgentPage = () => {
     const fetchBusinessDataAndLOBs = async () => {
       try {
         console.log('🔍 Starting to fetch Business Units and LOBs...');
+        setIsLoadingData(true);
         
         // Fetch Business Units
         const buParams = new URLSearchParams({
@@ -80,10 +82,12 @@ const NewAgentPage = () => {
 
         console.log('🎯 Final structured data:', structured);
         setBusinessUnitsWithLOBs(structured);
+        setIsLoadingData(false);
       } catch (error) {
         console.error('❌ Error fetching business units and LOBs:', error);
         setBusinessDataList([]);
         setBusinessUnitsWithLOBs([]);
+        setIsLoadingData(false);
       }
     };
 
@@ -165,6 +169,17 @@ const NewAgentPage = () => {
 
   const handleCardClick = (agent: typeof agents[0]) => {
     if (agent.available) {
+      if (isLoadingData) {
+        console.log('⏳ Data still loading, please wait...');
+        return;
+      }
+      
+      if (businessUnitsWithLOBs.length === 0) {
+        console.log('⚠️ No business units available');
+        return;
+      }
+      
+      console.log('✅ Opening drawer with data:', businessUnitsWithLOBs);
       setSelectedAgent(agent);
       setIsDrawerOpen(true);
     }
@@ -232,16 +247,24 @@ const NewAgentPage = () => {
                     onClick={() => handleCardClick(agent)}
                     className={`group relative flex flex-col p-6 bg-card border rounded-xl transition-all duration-200 ${
                       agent.available
-                        ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-700'
+                        ? isLoadingData
+                          ? 'cursor-wait opacity-75'
+                          : 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-700'
                         : 'cursor-not-allowed opacity-75'
                     }`}
                   >
                     {/* Badge */}
                     <div className="absolute top-4 right-4">
                       {agent.available ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                          Available Now
-                        </span>
+                        isLoadingData ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            Loading...
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            Available Now
+                          </span>
+                        )
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                           Coming Soon
