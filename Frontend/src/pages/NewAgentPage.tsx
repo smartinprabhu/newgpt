@@ -299,13 +299,13 @@ const NewAgentPage = () => {
         </div>
       </div>
 
-      {/* Agent Launcher Drawer - Commented out for direct redirect */}
-      {/* <AgentLauncher
+      {/* Agent Launcher Drawer */}
+      <AgentLauncher
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         agent={selectedAgent}
         businessUnits={businessUnitsWithLOBs}
-      /> */}
+      />
 
       <footer className="fixed bottom-0 left-0 w-full py-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[rgb(20,21,24)]">
         <p>© 2025 Aptino. All rights reserved.</p>
