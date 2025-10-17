@@ -344,6 +344,16 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   )}
                 </div>
               )}
+
+              {/* Debug Info */}
+              <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
+                <p>📊 Loaded: {businessUnits?.length || 0} Business Units</p>
+                {businessUnits?.length > 0 && (
+                  <p className="mt-1">
+                    First BU: "{businessUnits[0]?.display_name}" with {businessUnits[0]?.lobs?.length || 0} LOBs
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Initial Prompt */}
