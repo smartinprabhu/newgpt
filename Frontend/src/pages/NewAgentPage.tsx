@@ -161,16 +161,13 @@ const NewAgentPage = () => {
   const handleCardClick = (agent: typeof agents[0]) => {
     if (agent.available) {
       if (isLoadingData) {
-        console.log('⏳ Data still loading, please wait...');
         return;
       }
       
       if (businessUnitsWithLOBs.length === 0) {
-        console.log('⚠️ No business units available');
         return;
       }
       
-      console.log('✅ Opening drawer with data:', businessUnitsWithLOBs);
       setSelectedAgent(agent);
       setIsDrawerOpen(true);
     }
