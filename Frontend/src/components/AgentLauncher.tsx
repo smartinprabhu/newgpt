@@ -234,7 +234,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             <div className="space-y-3">
               <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
 
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
@@ -256,7 +256,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                     <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[400px] max-h-[400px] overflow-y-auto">
+                <DropdownMenuContent 
+                  className="w-[400px] max-h-[400px] overflow-y-auto z-[2100]"
+                  sideOffset={5}
+                  align="start"
+                >
                   <DropdownMenuLabel>Business Units</DropdownMenuLabel>
                   <DropdownMenuSeparator />
 
@@ -279,7 +283,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                                 </div>
                               </div>
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+                            <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto z-[2110]">
                               {/* Option to select BU without specific LOB */}
                               <DropdownMenuItem
                                 onClick={() => handleBUSelect(bu)}
