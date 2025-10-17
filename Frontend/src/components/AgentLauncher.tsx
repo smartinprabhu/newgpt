@@ -50,6 +50,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [selectedBU, setSelectedBU] = useState<BusinessUnit | null>(null);
   const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Debug logging
@@ -61,6 +62,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       console.log('🔍 businessUnits detail:', JSON.stringify(businessUnits, null, 2));
     }
   }, [isOpen, businessUnits]);
+
+  // Debug dropdown state
+  useEffect(() => {
+    console.log('🎯 Dropdown open state changed:', dropdownOpen);
+  }, [dropdownOpen]);
 
   // Auto-resize textarea
   useEffect(() => {
