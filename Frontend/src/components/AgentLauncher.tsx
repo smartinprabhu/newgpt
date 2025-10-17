@@ -226,12 +226,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             <div className="space-y-3">
               <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
 
-              <DropdownMenu modal={false} open={true} onOpenChange={() => {}}>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     className="w-full justify-between h-auto min-h-[44px] px-4 py-3"
-                    onClick={() => console.log('🖱️ Button clicked, businessUnits:', businessUnits.length)}
                   >
                     <span className="flex items-center gap-2 text-left flex-1">
                       {selectedBU ? (
@@ -267,10 +266,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                       <React.Fragment key={bu.code}>
                         {/* Business Unit Header - Always Clickable */}
                         <DropdownMenuItem
-                          onClick={() => {
-                            console.log('✅ BU selected:', bu.display_name);
-                            handleBUSelect(bu);
-                          }}
+                          onClick={() => handleBUSelect(bu)}
                           className="font-medium bg-muted/50 hover:bg-muted cursor-pointer"
                         >
                           <Building2 className="h-4 w-4 mr-2 text-primary" />
@@ -291,10 +287,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                         {bu.lobs && bu.lobs.length > 0 && bu.lobs.map((lob) => (
                           <DropdownMenuItem
                             key={lob.id}
-                            onClick={() => {
-                              console.log('✅ LOB selected:', lob.name);
-                              handleLOBSelect(bu, lob);
-                            }}
+                            onClick={() => handleLOBSelect(bu, lob)}
                             className="pl-8 cursor-pointer"
                           >
                             <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
