@@ -1,18 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import CustomSidebar from '../components/Sidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { LineChart, CalendarCheck, Network, DiamondPercent, ArrowRight, Sparkles } from 'lucide-react';
+import AgentLauncher from '../components/AgentLauncher';
+import { LineChart, CalendarCheck, Network, DiamondPercent } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AuthService from '../auth/utils/authService';
+import axios from 'axios';
 
 const NewAgentPage = () => {
   const [activeTab, setActiveTab] = React.useState('NewAgent');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<any>(null);
+  const [businessDataList, setBusinessDataList] = useState([]);
+
+  const WEBAPPAPIURL = '/api/v2/';
+
+  // Fetch business units on mount
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      const params = new URLSearchParams({
+        offset: '0',
+        domain: '[]',
+        order: 'id ASC',
+        fields: '["display_name","code","description","sequence","preferred_algorithm"]',
+        model: 'business.unit',
+      });
+
+      try {
+        const response = await axios.get(`${WEBAPPAPIURL}search_read?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${AuthService.getAccessToken()}`
+          },
+        });
+        setBusinessDataList(response?.data ?? []);
+      } catch (error) {
+        console.error('Error fetching business units:', error);
+        setBusinessDataList([]);
+      }
+    };
+
+    fetchBusinessData();
+  }, []);
 
   const agents = [
     {
       title: 'Forecasting Agent',
       subtitle: 'Short-term/Long-term',
-      description: 'Predict future demand with advanced forecasting models for immediate and extended planning.',
+      description: 'Predict future demand with advanced forecasting models for both immediate and extended planning horizons.',
       icon: <LineChart className="h-6 w-6" />,
       iconBg: 'bg-blue-100 dark:bg-blue-900/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -22,7 +56,7 @@ const NewAgentPage = () => {
     {
       title: 'Capacity Planning',
       subtitle: 'Tactical/Strategic',
-      description: 'Optimize resource allocation and workforce planning with strategic capacity analysis.',
+      description: 'Optimize resource allocation and workforce planning with tactical and strategic capacity analysis.',
       icon: <CalendarCheck className="h-6 w-6" />,
       iconBg: 'bg-green-100 dark:bg-green-900/30',
       iconColor: 'text-green-600 dark:text-green-400',
@@ -32,7 +66,7 @@ const NewAgentPage = () => {
     {
       title: 'What If / Scenario',
       subtitle: 'Scenario Analysis',
-      description: 'Explore different business scenarios and outcomes to make informed decisions.',
+      description: 'Explore different business scenarios and their potential outcomes to make informed decisions.',
       icon: <Network className="h-6 w-6" />,
       iconBg: 'bg-purple-100 dark:bg-purple-900/30',
       iconColor: 'text-purple-600 dark:text-purple-400',
@@ -42,7 +76,7 @@ const NewAgentPage = () => {
     {
       title: 'Occupancy Modeling',
       subtitle: 'Utilization Planning',
-      description: 'Analyze workspace occupancy patterns to optimize facility usage and efficiency.',
+      description: 'Analyze and model workspace occupancy patterns to optimize facility usage and efficiency.',
       icon: <DiamondPercent className="h-6 w-6" />,
       iconBg: 'bg-orange-100 dark:bg-orange-900/30',
       iconColor: 'text-orange-600 dark:text-orange-400',
@@ -52,8 +86,9 @@ const NewAgentPage = () => {
   ];
 
   const handleCardClick = (agent: typeof agents[0]) => {
-    if (agent.link) {
-      window.location.href = agent.link;
+    if (agent.available) {
+      setSelectedAgent(agent);
+      setIsDrawerOpen(true);
     }
   };
 
@@ -83,7 +118,7 @@ const NewAgentPage = () => {
               <DashboardHeader
                 title="AI Agents"
                 description="Intelligent agents to help with forecasting, planning, and analysis"
-                businessDataList={[]}
+                businessDataList={businessDataList}
                 lastUpdated={new Date().toLocaleDateString("en-GB")}
                 defaultConfigId={false}
                 userData={{}}
@@ -102,7 +137,7 @@ const NewAgentPage = () => {
               {/* Introduction Section */}
               <div className="mb-8 text-center">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full mb-4">
-                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <LineChart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium text-blue-600 dark:text-blue-400">AI-Powered Intelligence</span>
                 </div>
                 <h2 className="text-3xl font-bold mb-3 text-foreground">Choose Your Agent</h2>
@@ -118,13 +153,13 @@ const NewAgentPage = () => {
                     key={agent.title}
                     onClick={() => handleCardClick(agent)}
                     className={`group relative flex flex-col p-6 bg-card border rounded-xl transition-all duration-200 ${
-                      agent.available 
-                        ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-700' 
+                      agent.available
+                        ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-700'
                         : 'cursor-not-allowed opacity-75'
                     }`}
                   >
                     {/* Badge */}
-<div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4">
                       {agent.available ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                           Available Now
@@ -156,7 +191,7 @@ const NewAgentPage = () => {
                     {agent.available && (
                       <div className="flex items-center gap-2 mt-4 text-blue-600 dark:text-blue-400 text-sm font-medium">
                         <span>Launch Agent</span>
-                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                        <LineChart className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                       </div>
                     )}
                   </div>
@@ -173,6 +208,14 @@ const NewAgentPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Agent Launcher Drawer */}
+      <AgentLauncher
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        agent={selectedAgent}
+        businessUnits={businessDataList}
+      />
 
       <footer className="fixed bottom-0 left-0 w-full py-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[rgb(20,21,24)]">
         <p>© 2025 Aptino. All rights reserved.</p>
