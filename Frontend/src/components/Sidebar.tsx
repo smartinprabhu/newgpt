@@ -204,7 +204,10 @@ const CustomSidebar = ({ activeTab, setActiveTab, defaultConfig, headerText, set
     <SidebarMenuItem key="AIAgents">
       <SidebarMenuButtonOriginal
         tooltip="AI Agents"
-        onClick={() => window.open("http://localhost:3001", "_blank")}
+        onClick={() => {
+          navigate("/new-agent");
+          setActiveTab("NewAgent");
+        }}
         className={`flex items-center gap-2 py-2 rounded-lg transition-colors duration-200 w-full hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground ${
           sidebarState === "expanded" ? "pl-2" : ""
         }`}
