@@ -1,14 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Sparkles, Send, BarChart3, Brain, Loader2 } from 'lucide-react';
+import { X, Sparkles, Brain, Loader2, ChevronRight, Building2, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface LOB {
+  id: number;
+  name: string;
+  code: string;
+  description?: string;
+  business_unit?: [number, string] | number;
+}
+
+interface BusinessUnit {
+  id?: number;
+  display_name: string;
+  code: string;
+  description?: string;
+  sequence?: number;
+  preferred_algorithm?: any;
+  lobs: LOB[];
+}
 
 interface AgentLauncherProps {
   isOpen: boolean;
@@ -20,12 +42,13 @@ interface AgentLauncherProps {
     icon: React.ReactNode;
     iconColor: string;
   } | null;
-  businessUnits: Array<{ id?: number; display_name: string; code: string }>;
+  businessUnits: BusinessUnit[];
 }
 
 export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }: AgentLauncherProps) {
   const [prompt, setPrompt] = useState('');
-  const [selectedBU, setSelectedBU] = useState<string>('');
+  const [selectedBU, setSelectedBU] = useState<BusinessUnit | null>(null);
+  const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
   const [isLaunching, setIsLaunching] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,12 +64,23 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   useEffect(() => {
     if (isOpen) {
       setPrompt('');
-      setSelectedBU('');
+      setSelectedBU(null);
+      setSelectedLOB(null);
       setIsLaunching(false);
     }
   }, [isOpen]);
 
   if (!isOpen || !agent) return null;
+
+  const handleBUSelect = (bu: BusinessUnit) => {
+    setSelectedBU(bu);
+    setSelectedLOB(null); // Clear LOB when BU changes
+  };
+
+  const handleLOBSelect = (bu: BusinessUnit, lob: LOB) => {
+    setSelectedBU(bu);
+    setSelectedLOB(lob);
+  };
 
   const handleLaunch = () => {
     if (!selectedBU || !prompt.trim()) return;
@@ -60,6 +94,13 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   };
 
   const canLaunch = selectedBU && prompt.trim().length > 0;
+
+  // Get display text for the selected BU/LOB
+  const getSelectionText = () => {
+    if (!selectedBU) return 'Select Business Unit / LOB...';
+    if (selectedLOB) return `${selectedBU.display_name} → ${selectedLOB.name}`;
+    return selectedBU.display_name;
+  };
 
   // Suggested prompts based on agent type
   const getSuggestions = () => {
@@ -179,29 +220,120 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
               </div>
             </div>
 
-            {/* Business Unit Selection */}
+            {/* Hierarchical BU/LOB Selection */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">Select Business Unit</label>
-              <Select value={selectedBU} onValueChange={setSelectedBU}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose a business unit..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {businessUnits.map((bu) => (
-                    <SelectItem key={bu.code} value={bu.code}>
-                      <div className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                        <span>{bu.display_name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                  {businessUnits.length === 0 && (
-                    <SelectItem value="no-data" disabled>
+              <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between h-auto min-h-[44px] px-4 py-3"
+                  >
+                    <span className="flex items-center gap-2 text-left flex-1">
+                      {selectedBU ? (
+                        <>
+                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{getSelectionText()}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">Choose a business unit...</span>
+                        </>
+                      )}
+                    </span>
+                    <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[400px] max-h-[400px] overflow-y-auto">
+                  <DropdownMenuLabel>Business Units</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+
+                  {businessUnits.length === 0 ? (
+                    <DropdownMenuItem disabled>
                       No business units available
-                    </SelectItem>
+                    </DropdownMenuItem>
+                  ) : (
+                    businessUnits.map((bu) => (
+                      <React.Fragment key={bu.code}>
+                        {bu.lobs && bu.lobs.length > 0 ? (
+                          // BU with LOBs - show as submenu
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{bu.display_name}</span>
+                                  <span className="text-xs text-muted-foreground">{bu.lobs.length} LOB{bu.lobs.length !== 1 ? 's' : ''}</span>
+                                </div>
+                              </div>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+                              {/* Option to select BU without specific LOB */}
+                              <DropdownMenuItem
+                                onClick={() => handleBUSelect(bu)}
+                                className="font-medium"
+                              >
+                                <Building2 className="h-4 w-4 mr-2 text-primary" />
+                                All of {bu.display_name}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+
+                              {/* Individual LOBs */}
+                              {bu.lobs.map((lob) => (
+                                <DropdownMenuItem
+                                  key={lob.id}
+                                  onClick={() => handleLOBSelect(bu, lob)}
+                                >
+                                  <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                                  <div className="flex flex-col">
+                                    <span>{lob.name}</span>
+                                    {lob.description && (
+                                      <span className="text-xs text-muted-foreground">{lob.description}</span>
+                                    )}
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        ) : (
+                          // BU without LOBs - direct selection
+                          <DropdownMenuItem
+                            onClick={() => handleBUSelect(bu)}
+                          >
+                            <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{bu.display_name}</span>
+                              {bu.description && (
+                                <span className="text-xs text-muted-foreground">{bu.description}</span>
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        )}
+                      </React.Fragment>
+                    ))
                   )}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Selection Display */}
+              {selectedBU && (
+                <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Business Unit:</span>
+                    <span>{selectedBU.display_name}</span>
+                  </div>
+                  {selectedLOB && (
+                    <div className="flex items-center gap-2 text-sm pl-6 border-l-2 border-primary/30">
+                      <Layers className="h-4 w-4 text-primary" />
+                      <span className="font-medium">LOB:</span>
+                      <span>{selectedLOB.name}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Initial Prompt */}
@@ -269,17 +401,17 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             {/* Feature Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
               <div className="rounded-lg border p-4 bg-card/50">
-                <BarChart3 className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1">Real-time Analysis</h4>
+                <Building2 className="h-5 w-5 text-primary mb-2" />
+                <h4 className="font-semibold text-sm mb-1">Context-Aware</h4>
                 <p className="text-xs text-muted-foreground">
-                  Get instant insights from your data with AI-powered analytics
+                  Analysis tailored to your selected business unit and LOB
                 </p>
               </div>
               <div className="rounded-lg border p-4 bg-card/50">
                 <Sparkles className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1">Smart Recommendations</h4>
+                <h4 className="font-semibold text-sm mb-1">AI-Powered Insights</h4>
                 <p className="text-xs text-muted-foreground">
-                  Receive intelligent suggestions based on your specific context
+                  Get intelligent recommendations based on your data
                 </p>
               </div>
             </div>
