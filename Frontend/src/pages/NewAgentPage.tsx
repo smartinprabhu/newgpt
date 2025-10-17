@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CustomSidebar from '../components/Sidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
 import AgentLauncher from '../components/AgentLauncher';
-import { LineChart, CalendarCheck, Network, DiamondPercent } from 'lucide-react';
+import { LineChart, CalendarCheck, Network, DiamondPercent, TrendingUp, Calendar, GitBranch, Building2 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AuthService from '../auth/utils/authService';
 import axios from 'axios';
@@ -44,9 +44,9 @@ const NewAgentPage = () => {
 
   const agents = [
     {
-      title: 'Forecasting Agent',
-      subtitle: 'Short-term/Long-term',
-      description: 'Predict future demand with advanced forecasting models for both immediate and extended planning horizons.',
+      title: 'Forecasting',
+      subtitle: 'General Forecasting',
+      description: 'Comprehensive forecasting agent that handles both short-term and long-term demand predictions.',
       icon: <LineChart className="h-6 w-6" />,
       iconBg: 'bg-blue-100 dark:bg-blue-900/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -54,9 +54,29 @@ const NewAgentPage = () => {
       available: true
     },
     {
-      title: 'Capacity Planning',
-      subtitle: 'Tactical/Strategic',
-      description: 'Optimize resource allocation and workforce planning with tactical and strategic capacity analysis.',
+      title: 'Short Term Forecasting',
+      subtitle: 'Immediate Planning',
+      description: 'Predict demand for the next 1-4 weeks with high accuracy for tactical operations.',
+      icon: <TrendingUp className="h-6 w-6" />,
+      iconBg: 'bg-cyan-100 dark:bg-cyan-900/30',
+      iconColor: 'text-cyan-600 dark:text-cyan-400',
+      link: null,
+      available: false
+    },
+    {
+      title: 'Long Term Forecasting',
+      subtitle: 'Strategic Planning',
+      description: 'Forecast demand for months or quarters ahead to support strategic business decisions.',
+      icon: <Calendar className="h-6 w-6" />,
+      iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+      iconColor: 'text-indigo-600 dark:text-indigo-400',
+      link: null,
+      available: false
+    },
+    {
+      title: 'Tactical Capacity Planning',
+      subtitle: 'Operational Planning',
+      description: 'Optimize short-term resource allocation and workforce scheduling for immediate needs.',
       icon: <CalendarCheck className="h-6 w-6" />,
       iconBg: 'bg-green-100 dark:bg-green-900/30',
       iconColor: 'text-green-600 dark:text-green-400',
@@ -64,10 +84,20 @@ const NewAgentPage = () => {
       available: false
     },
     {
-      title: 'What If / Scenario',
-      subtitle: 'Scenario Analysis',
-      description: 'Explore different business scenarios and their potential outcomes to make informed decisions.',
-      icon: <Network className="h-6 w-6" />,
+      title: 'Strategic Capacity Planning',
+      subtitle: 'Long-term Planning',
+      description: 'Plan capacity and resources for the long term with strategic workforce and infrastructure decisions.',
+      icon: <Building2 className="h-6 w-6" />,
+      iconBg: 'bg-teal-100 dark:bg-teal-900/30',
+      iconColor: 'text-teal-600 dark:text-teal-400',
+      link: null,
+      available: false
+    },
+    {
+      title: 'What If & Scenario Analyst',
+      subtitle: 'Scenario Planning',
+      description: 'Explore multiple business scenarios, run simulations, and analyze what-if situations.',
+      icon: <GitBranch className="h-6 w-6" />,
       iconBg: 'bg-purple-100 dark:bg-purple-900/30',
       iconColor: 'text-purple-600 dark:text-purple-400',
       link: null,
@@ -75,8 +105,8 @@ const NewAgentPage = () => {
     },
     {
       title: 'Occupancy Modeling',
-      subtitle: 'Utilization Planning',
-      description: 'Analyze and model workspace occupancy patterns to optimize facility usage and efficiency.',
+      subtitle: 'Space Optimization',
+      description: 'Analyze workspace occupancy patterns and optimize facility utilization for efficiency.',
       icon: <DiamondPercent className="h-6 w-6" />,
       iconBg: 'bg-orange-100 dark:bg-orange-900/30',
       iconColor: 'text-orange-600 dark:text-orange-400',
