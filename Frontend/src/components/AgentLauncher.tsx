@@ -56,6 +56,8 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [error, setError] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const BACKEND_API_URL = 'http://localhost:8000'; // FastAPI backend URL
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -71,6 +73,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       setSelectedBU(null);
       setSelectedLOB(null);
       setIsLaunching(false);
+      setShowResponse(false);
+      setApiResponse('');
+      setError('');
     }
   }, [isOpen]);
 
@@ -86,17 +91,55 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     setSelectedLOB(lob);
   };
 
-  const handleLaunch = () => {
+  const handleLaunch = async () => {
     if (!selectedBU || !prompt.trim()) return;
 
     setIsLaunching(true);
+    setError('');
 
-    // Simulate launching and redirect to new tab
-    setTimeout(() => {
-      window.open('http://localhost:3001', '_blank');
+    try {
+      // Prepare request payload
+      const payload = {
+        agent_type: agent.title,
+        business_unit: {
+          id: selectedBU.id,
+          code: selectedBU.code,
+          display_name: selectedBU.display_name,
+          description: selectedBU.description
+        },
+        line_of_business: selectedLOB ? {
+          id: selectedLOB.id,
+          code: selectedLOB.code,
+          name: selectedLOB.name,
+          description: selectedLOB.description
+        } : null,
+        prompt: prompt.trim(),
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('Sending request to backend:', payload);
+
+      // Send POST request to FastAPI backend
+      const response = await axios.post(`${BACKEND_API_URL}/api/agent/execute`, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 120000 // 2 minute timeout
+      });
+
+      console.log('Backend response:', response.data);
+
+      // Show response in popup
+      setApiResponse(response.data.response || JSON.stringify(response.data, null, 2));
+      setShowResponse(true);
+
+    } catch (err: any) {
+      console.error('Error calling backend:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to connect to backend');
+      setShowResponse(true);
+    } finally {
       setIsLaunching(false);
-      onClose(); // Close the drawer after opening the new tab
-    }, 1500);
+    }
   };
 
   const canLaunch = selectedBU && prompt.trim().length > 0;
