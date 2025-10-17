@@ -13,6 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import axios from 'axios';
 
 interface LOB {
   id: number;
@@ -50,6 +51,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [selectedBU, setSelectedBU] = useState<BusinessUnit | null>(null);
   const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
+  const [apiResponse, setApiResponse] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
