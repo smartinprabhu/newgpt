@@ -173,18 +173,18 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-screen w-full md:w-[700px] lg:w-[800px] bg-background border-l shadow-2xl z-[2001] transform transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 h-screen w-full md:w-[700px] lg:w-[800px] bg-background border-l border-border shadow-2xl z-[2001] transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b bg-background/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-border bg-background/95 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${agent.iconColor.replace('text-', 'bg-').replace('600', '100')} ${agent.iconColor.replace('text-', 'dark:bg-').replace('600', '900/30')}`}>
               {agent.icon}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{agent.title}</h2>
+              <h2 className="text-xl font-bold text-foreground">{agent.title}</h2>
               {agent.subtitle && (
                 <p className="text-sm text-muted-foreground">{agent.subtitle}</p>
               )}
@@ -194,25 +194,25 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full"
+            className="rounded-full hover:bg-accent"
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="h-[calc(100vh-80px)] overflow-y-auto">
+        <div className="h-[calc(100vh-80px)] overflow-y-auto bg-background">
           <div className="p-6 space-y-6">
             {/* Hero Section */}
             <div className="relative">
-              <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(99,102,241,0.15),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(168,85,247,0.1),transparent_50%)]" />
+              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 dark:from-primary/20 dark:via-transparent dark:to-primary/10" />
 
               <div className="text-center space-y-4 py-8">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary text-xs font-medium">
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 px-3 py-1 text-primary text-xs font-medium border border-primary/20">
                   <Sparkles className="h-4 w-4" /> AI-Powered Intelligence
                 </div>
 
-                <h3 className="text-3xl font-bold tracking-tight">
+                <h3 className="text-3xl font-bold tracking-tight text-foreground">
                   Launch {agent.title}
                 </h3>
 
@@ -224,19 +224,19 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
             {/* Hierarchical BU/LOB Selection */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
+              <label className="text-sm font-medium text-foreground">Select Business Unit & Line of Business</label>
 
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between h-auto min-h-[44px] px-4 py-3"
+                    className="w-full justify-between h-auto min-h-[44px] px-4 py-3 border-border hover:bg-accent hover:text-accent-foreground"
                   >
                     <span className="flex items-center gap-2 text-left flex-1">
                       {selectedBU ? (
                         <>
                           <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{getSelectionText()}</span>
+                          <span className="truncate text-foreground">{getSelectionText()}</span>
                         </>
                       ) : (
                         <>
@@ -249,16 +249,16 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
-                  className="w-[500px] max-h-[500px] overflow-y-auto"
+                  className="w-[500px] max-h-[500px] overflow-y-auto bg-popover border-border"
                   sideOffset={5}
                   align="start"
                   style={{ zIndex: 2100 }}
                 >
-                  <DropdownMenuLabel>Business Units & Lines of Business</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-foreground">Business Units & Lines of Business</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border" />
 
                   {businessUnits.length === 0 ? (
-                    <DropdownMenuItem disabled>
+                    <DropdownMenuItem disabled className="text-muted-foreground">
                       No business units available
                     </DropdownMenuItem>
                   ) : (
@@ -267,11 +267,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                         {/* Business Unit Header - Always Clickable */}
                         <DropdownMenuItem
                           onClick={() => handleBUSelect(bu)}
-                          className="font-medium bg-muted/50 hover:bg-muted cursor-pointer"
+                          className="font-medium bg-muted/50 hover:bg-muted dark:bg-muted/30 dark:hover:bg-muted/50 cursor-pointer"
                         >
                           <Building2 className="h-4 w-4 mr-2 text-primary" />
                           <div className="flex flex-col flex-1">
-                            <span>{bu.display_name}</span>
+                            <span className="text-foreground">{bu.display_name}</span>
                             {bu.description && (
                               <span className="text-xs font-normal text-muted-foreground">{bu.description}</span>
                             )}
@@ -288,11 +288,11 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                           <DropdownMenuItem
                             key={lob.id}
                             onClick={() => handleLOBSelect(bu, lob)}
-                            className="pl-8 cursor-pointer"
+                            className="pl-8 cursor-pointer hover:bg-accent"
                           >
                             <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
                             <div className="flex flex-col flex-1">
-                              <span>{lob.name}</span>
+                              <span className="text-foreground">{lob.name}</span>
                               {lob.description && (
                                 <span className="text-xs text-muted-foreground">{lob.description}</span>
                               )}
@@ -301,7 +301,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                         ))}
 
                         {/* Separator between BUs */}
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-border" />
                       </React.Fragment>
                     ))
                   )}
@@ -310,17 +310,17 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
               {/* Selection Display */}
               {selectedBU && (
-                <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+                <div className="rounded-lg border border-border bg-muted/50 dark:bg-muted/30 p-3 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Business Unit:</span>
-                    <span>{selectedBU.display_name}</span>
+                    <span className="font-medium text-foreground">Business Unit:</span>
+                    <span className="text-foreground">{selectedBU.display_name}</span>
                   </div>
                   {selectedLOB && (
                     <div className="flex items-center gap-2 text-sm pl-6 border-l-2 border-primary/30">
                       <Layers className="h-4 w-4 text-primary" />
-                      <span className="font-medium">LOB:</span>
-                      <span>{selectedLOB.name}</span>
+                      <span className="font-medium text-foreground">LOB:</span>
+                      <span className="text-foreground">{selectedLOB.name}</span>
                     </div>
                   )}
                 </div>
@@ -329,15 +329,15 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
             {/* Initial Prompt */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">What would you like to do?</label>
-              <div className="rounded-xl border bg-card/60 backdrop-blur-lg p-4 shadow-sm">
+              <label className="text-sm font-medium text-foreground">What would you like to do?</label>
+              <div className="rounded-xl border border-border bg-card dark:bg-card p-4 shadow-sm">
                 <div className="flex items-start gap-2">
                   <Textarea
                     ref={textareaRef}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Describe your analysis needs..."
-                    className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 resize-none overflow-hidden min-h-[100px] border-0"
+                    className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none overflow-hidden min-h-[100px] border-0"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && canLaunch) {
                         e.preventDefault();
@@ -359,7 +359,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                     size="sm"
                     variant="outline"
                     onClick={() => setPrompt(suggestion)}
-                    className="text-xs"
+                    className="text-xs border-border hover:bg-accent hover:text-accent-foreground"
                   >
                     {suggestion}
                   </Button>
@@ -372,7 +372,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
               <Button
                 onClick={handleLaunch}
                 disabled={!canLaunch || isLaunching}
-                className="w-full h-12 text-base font-semibold gap-2"
+                className="w-full h-12 text-base font-semibold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                 size="lg"
               >
                 {isLaunching ? (
@@ -391,16 +391,16 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
             {/* Feature Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
-              <div className="rounded-lg border p-4 bg-card/50">
+              <div className="rounded-lg border border-border p-4 bg-card dark:bg-card/50">
                 <Building2 className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1">Context-Aware</h4>
+                <h4 className="font-semibold text-sm mb-1 text-foreground">Context-Aware</h4>
                 <p className="text-xs text-muted-foreground">
                   Analysis tailored to your selected business unit and LOB
                 </p>
               </div>
-              <div className="rounded-lg border p-4 bg-card/50">
+              <div className="rounded-lg border border-border p-4 bg-card dark:bg-card/50">
                 <Sparkles className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1">AI-Powered Insights</h4>
+                <h4 className="font-semibold text-sm mb-1 text-foreground">AI-Powered Insights</h4>
                 <p className="text-xs text-muted-foreground">
                   Get intelligent recommendations based on your data
                 </p>
