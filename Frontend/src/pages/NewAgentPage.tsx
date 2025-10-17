@@ -1,7 +1,7 @@
 import React from 'react';
 import CustomSidebar from '../components/Sidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { LineChart, CalendarCheck, Network, DiamondPercent } from 'lucide-react';
+import { LineChart, CalendarCheck, Network, DiamondPercent, ArrowRight, Sparkles } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AuthService from '../auth/utils/authService';
 
@@ -12,30 +12,42 @@ const NewAgentPage = () => {
     {
       title: 'Forecasting Agent',
       subtitle: 'Short-term/Long-term',
-      description: 'Predict future demand with advanced forecasting models for both immediate and extended planning horizons.',
-      icon: <LineChart className="h-8 w-8 text-blue-600" />,
-      link: 'http://localhost:3001'
+      description: 'Predict future demand with advanced forecasting models for immediate and extended planning.',
+      icon: <LineChart className="h-6 w-6" />,
+      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      link: 'http://localhost:3001',
+      available: true
     },
     {
       title: 'Capacity Planning',
       subtitle: 'Tactical/Strategic',
-      description: 'Optimize resource allocation and workforce planning with tactical and strategic capacity analysis.',
-      icon: <CalendarCheck className="h-8 w-8 text-green-600" />,
-      link: null
+      description: 'Optimize resource allocation and workforce planning with strategic capacity analysis.',
+      icon: <CalendarCheck className="h-6 w-6" />,
+      iconBg: 'bg-green-100 dark:bg-green-900/30',
+      iconColor: 'text-green-600 dark:text-green-400',
+      link: null,
+      available: false
     },
     {
       title: 'What If / Scenario',
       subtitle: 'Scenario Analysis',
-      description: 'Explore different business scenarios and their potential outcomes to make informed decisions.',
-      icon: <Network className="h-8 w-8 text-purple-600" />,
-      link: null
+      description: 'Explore different business scenarios and outcomes to make informed decisions.',
+      icon: <Network className="h-6 w-6" />,
+      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      link: null,
+      available: false
     },
     {
       title: 'Occupancy Modeling',
       subtitle: 'Utilization Planning',
-      description: 'Analyze and model workspace occupancy patterns to optimize facility usage and efficiency.',
-      icon: <DiamondPercent className="h-8 w-8 text-orange-600" />,
-      link: null
+      description: 'Analyze workspace occupancy patterns to optimize facility usage and efficiency.',
+      icon: <DiamondPercent className="h-6 w-6" />,
+      iconBg: 'bg-orange-100 dark:bg-orange-900/30',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      link: null,
+      available: false
     }
   ];
 
@@ -85,25 +97,77 @@ const NewAgentPage = () => {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="w-full max-w-5xl">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="flex-1 flex items-start justify-center p-6 pt-12">
+            <div className="w-full max-w-6xl">
+              {/* Introduction Section */}
+              <div className="mb-8 text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full mb-4">
+                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-600 dark:text-blue-400">AI-Powered Intelligence</span>
+                </div>
+                <h2 className="text-3xl font-bold mb-3 text-foreground">Choose Your Agent</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">
+                  Select an AI agent to assist with your forecasting, planning, and analysis needs.
+                </p>
+              </div>
+
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
                 {agents.map((agent) => (
                   <div
                     key={agent.title}
                     onClick={() => handleCardClick(agent)}
-                    className="flex cursor-pointer flex-col items-center justify-start text-center p-8 bg-card bg-accent border shadow-sm rounded-lg hover:shadow-lg transition-shadow min-h-[280px]"
+                    className={`group relative flex flex-col p-6 bg-card border rounded-xl transition-all duration-200 ${
+                      agent.available 
+                        ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-700' 
+                        : 'cursor-not-allowed opacity-75'
+                    }`}
                   >
-                    <div className="mb-4">{agent.icon}</div>
-                    <h3 className="text-xl font-semibold mb-2">{agent.title}</h3>
-                    {agent.subtitle && (
-                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">{agent.subtitle}</p>
-                    )}
-                    {agent.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{agent.description}</p>
+                    {/* Badge */}
+<div className="absolute top-4 right-4">
+                      {agent.available ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          Available Now
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                          Coming Soon
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Icon */}
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${agent.iconBg} mb-4`}>
+                      <div className={agent.iconColor}>
+                        {agent.icon}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1 text-foreground">{agent.title}</h3>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">{agent.subtitle}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {agent.description}
+                      </p>
+                    </div>
+
+                    {/* Arrow indicator for available agents */}
+                    {agent.available && (
+                      <div className="flex items-center gap-2 mt-4 text-blue-600 dark:text-blue-400 text-sm font-medium">
+                        <span>Launch Agent</span>
+                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </div>
                     )}
                   </div>
                 ))}
+              </div>
+
+              {/* Info Note */}
+              <div className="mt-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  More agents coming soon. Stay tuned for updates!
+                </p>
               </div>
             </div>
           </div>
