@@ -359,7 +359,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                     size="sm"
                     variant="outline"
                     onClick={() => setPrompt(suggestion)}
-                    className="text-xs border-border hover:bg-accent hover:text-accent-foreground"
+                    className="text-xs text-foreground border-border hover:bg-accent hover:text-accent-foreground transition-colors"
                   >
                     {suggestion}
                   </Button>
