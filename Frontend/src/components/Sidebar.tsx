@@ -105,8 +105,7 @@ const CustomSidebar = ({ activeTab, setActiveTab, defaultConfig, headerText, set
     { id: "Ops", name: "Realtime OPS Support" },
     { id: "D&A", name: "Dashboards & Analytics" },
     { id: "AGCB", name: "Agent Gauri (Chat bot)" },
-    { id: "MAPP", name: "Mobile App" },
-    { id: "NewAgent", name: "New Agent" }
+    { id: "MAPP", name: "Mobile App" }
   ];
 
   const rateTabs: Tab[] = [];
