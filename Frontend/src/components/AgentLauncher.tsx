@@ -50,23 +50,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [selectedBU, setSelectedBU] = useState<BusinessUnit | null>(null);
   const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
   const [isLaunching, setIsLaunching] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Debug logging
-  useEffect(() => {
-    if (isOpen) {
-      console.log('🚀 AgentLauncher opened');
-      console.log('📦 businessUnits prop:', businessUnits);
-      console.log('📊 businessUnits length:', businessUnits?.length);
-      console.log('🔍 businessUnits detail:', JSON.stringify(businessUnits, null, 2));
-    }
-  }, [isOpen, businessUnits]);
-
-  // Debug dropdown state
-  useEffect(() => {
-    console.log('🎯 Dropdown open state changed:', dropdownOpen);
-  }, [dropdownOpen]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -242,7 +226,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             <div className="space-y-3">
               <label className="text-sm font-medium">Select Business Unit & Line of Business</label>
 
-              <DropdownMenu modal={false} open={dropdownOpen} onOpenChange={setDropdownOpen}>
+              <DropdownMenu modal={false} open={true} onOpenChange={() => {}}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
