@@ -160,22 +160,17 @@ const NewAgentPage = () => {
 
   const handleCardClick = (agent: typeof agents[0]) => {
     if (agent.available) {
-      // Directly redirect to the agent's link in a new tab
-      if (agent.link) {
-        window.open(agent.link, '_blank');
+      // Open the drawer for agent configuration
+      if (isLoadingData) {
+        return;
       }
       
-      // Comment out drawer functionality for now
-      // if (isLoadingData) {
-      //   return;
-      // }
-      // 
-      // if (businessUnitsWithLOBs.length === 0) {
-      //   return;
-      // }
-      // 
-      // setSelectedAgent(agent);
-      // setIsDrawerOpen(true);
+      if (businessUnitsWithLOBs.length === 0) {
+        return;
+      }
+      
+      setSelectedAgent(agent);
+      setIsDrawerOpen(true);
     }
   };
 
