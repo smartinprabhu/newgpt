@@ -12,24 +12,28 @@ const NewAgentPage = () => {
     {
       title: 'Forecasting Agent',
       subtitle: 'Short-term/Long-term',
+      description: 'Predict future demand with advanced forecasting models for both immediate and extended planning horizons.',
       icon: <LineChart className="h-8 w-8 text-blue-600" />,
       link: 'http://localhost:3001'
     },
     {
       title: 'Capacity Planning',
       subtitle: 'Tactical/Strategic',
+      description: 'Optimize resource allocation and workforce planning with tactical and strategic capacity analysis.',
       icon: <CalendarCheck className="h-8 w-8 text-green-600" />,
       link: null
     },
     {
       title: 'What If / Scenario',
-      subtitle: null,
+      subtitle: 'Scenario Analysis',
+      description: 'Explore different business scenarios and their potential outcomes to make informed decisions.',
       icon: <Network className="h-8 w-8 text-purple-600" />,
       link: null
     },
     {
       title: 'Occupancy Modeling',
-      subtitle: null,
+      subtitle: 'Utilization Planning',
+      description: 'Analyze and model workspace occupancy patterns to optimize facility usage and efficiency.',
       icon: <DiamondPercent className="h-8 w-8 text-orange-600" />,
       link: null
     }
@@ -81,19 +85,22 @@ const NewAgentPage = () => {
           </div>
 
           {/* Main Content */}
-          <div className="mb-4">
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="w-full max-w-5xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {agents.map((agent) => (
                   <div
                     key={agent.title}
                     onClick={() => handleCardClick(agent)}
-                    className="flex cursor-pointer flex-col items-center justify-center text-center p-6 bg-card bg-accent border shadow-sm rounded-lg hover:shadow-lg transition-shadow"
+                    className="flex cursor-pointer flex-col items-center justify-start text-center p-8 bg-card bg-accent border shadow-sm rounded-lg hover:shadow-lg transition-shadow min-h-[280px]"
                   >
-                    <div className="mb-3">{agent.icon}</div>
-                    <h3 className="text-lg font-semibold mb-1">{agent.title}</h3>
+                    <div className="mb-4">{agent.icon}</div>
+                    <h3 className="text-xl font-semibold mb-2">{agent.title}</h3>
                     {agent.subtitle && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{agent.subtitle}</p>
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">{agent.subtitle}</p>
+                    )}
+                    {agent.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{agent.description}</p>
                     )}
                   </div>
                 ))}
