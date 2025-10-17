@@ -165,7 +165,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/60 dark:bg-black/70 backdrop-blur-sm z-[2000] transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
