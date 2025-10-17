@@ -20,15 +20,18 @@ const NewAgentPage = () => {
   useEffect(() => {
     const fetchBusinessDataAndLOBs = async () => {
       try {
+        console.log('🔍 Starting to fetch Business Units and LOBs...');
+        
         // Fetch Business Units
         const buParams = new URLSearchParams({
           offset: '0',
           domain: '[]',
           order: 'id ASC',
-          fields: '["display_name","code","description","sequence","preferred_algorithm"]',
+          fields: '["display_name","code","description","sequence","preferred_algorithm","id"]',
           model: 'business.unit',
         });
 
+        console.log('📤 Fetching Business Units with params:', buParams.toString());
         const buResponse = await axios.get(`${WEBAPPAPIURL}search_read?${buParams.toString()}`, {
           headers: {
             Authorization: `Bearer ${AuthService.getAccessToken()}`
@@ -36,17 +39,19 @@ const NewAgentPage = () => {
         });
 
         const businessUnits = buResponse?.data ?? [];
+        console.log('✅ Business Units fetched:', businessUnits.length, businessUnits);
         setBusinessDataList(businessUnits);
 
-        // Fetch LOBs
+        // Fetch LOBs - using same fields as Dashboard
         const lobParams = new URLSearchParams({
           offset: '0',
           domain: '[]',
-          order: 'id ASC',
-          fields: '["name","code","business_unit","description"]',
+          order: 'sequence ASC',
+          fields: '["description","name","sequence","id","color_code","preferred_algorithm","contributors_ids","business_unit"]',
           model: 'line_business_lob',
         });
 
+        console.log('📤 Fetching LOBs with params:', lobParams.toString());
         const lobResponse = await axios.get(`${WEBAPPAPIURL}search_read?${lobParams.toString()}`, {
           headers: {
             Authorization: `Bearer ${AuthService.getAccessToken()}`
@@ -54,20 +59,29 @@ const NewAgentPage = () => {
         });
 
         const lobs = lobResponse?.data ?? [];
+        console.log('✅ LOBs fetched:', lobs.length, lobs);
 
         // Organize LOBs under their respective Business Units
-        const structured = businessUnits.map((bu: any) => ({
-          ...bu,
-          lobs: lobs.filter((lob: any) => {
+        const structured = businessUnits.map((bu: any) => {
+          const buLobs = lobs.filter((lob: any) => {
             // business_unit is typically [id, name] array from Odoo
             const buId = Array.isArray(lob.business_unit) ? lob.business_unit[0] : lob.business_unit;
+            console.log(`🔗 Checking LOB "${lob.name}" with BU ID ${buId} against BU "${bu.display_name}" with ID ${bu.id}`);
             return buId === bu.id;
-          })
-        }));
+          });
+          
+          console.log(`📊 BU "${bu.display_name}" (ID: ${bu.id}) has ${buLobs.length} LOBs:`, buLobs.map(l => l.name));
+          
+          return {
+            ...bu,
+            lobs: buLobs
+          };
+        });
 
+        console.log('🎯 Final structured data:', structured);
         setBusinessUnitsWithLOBs(structured);
       } catch (error) {
-        console.error('Error fetching business units and LOBs:', error);
+        console.error('❌ Error fetching business units and LOBs:', error);
         setBusinessDataList([]);
         setBusinessUnitsWithLOBs([]);
       }
