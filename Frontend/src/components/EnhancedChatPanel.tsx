@@ -28,6 +28,25 @@ import { InlineCapacityPlanning } from './inline-capacity-planning';
 
 const safeFixed = (val: any, digits: number = 2) => (val === null || val === undefined || !isFinite(Number(val))) ? 'N/A' : Number(val).toFixed(digits);
 
+interface EnhancedChatPanelProps {
+  agentType?: string;
+  agentSubtype?: string;
+  businessUnit?: {
+    id?: number;
+    code: string;
+    display_name: string;
+    description?: string;
+  };
+  lineOfBusiness?: {
+    id: number;
+    code: string;
+    name: string;
+    description?: string;
+  } | null;
+  initialPrompt?: string;
+  className?: string;
+}
+
 type AgentConfig = {
   name: string;
   emoji: string;
