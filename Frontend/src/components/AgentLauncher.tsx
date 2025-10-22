@@ -42,6 +42,8 @@ interface AgentLauncherProps {
     description: string;
     icon: React.ReactNode;
     iconColor: string;
+    hasToggle?: boolean;
+    subtypes?: string[];
   } | null;
   businessUnits: BusinessUnit[];
 }
@@ -50,9 +52,8 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [prompt, setPrompt] = useState('');
   const [selectedBU, setSelectedBU] = useState<BusinessUnit | null>(null);
   const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
+  const [selectedSubtype, setSelectedSubtype] = useState<string>('');
   const [isLaunching, setIsLaunching] = useState(false);
-  const [showResponse, setShowResponse] = useState(false);
-  const [apiResponse, setApiResponse] = useState<string>('');
   const [error, setError] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,11 +74,15 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       setSelectedBU(null);
       setSelectedLOB(null);
       setIsLaunching(false);
-      setShowResponse(false);
-      setApiResponse('');
       setError('');
+      // Initialize subtype to first option if agent has toggle
+      if (agent?.hasToggle && agent?.subtypes && agent.subtypes.length > 0) {
+        setSelectedSubtype(agent.subtypes[0]);
+      } else {
+        setSelectedSubtype('');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, agent]);
 
   if (!isOpen || !agent) return null;
 
@@ -98,46 +103,34 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     setError('');
 
     try {
-      // Prepare request payload
-      const payload = {
-        agent_type: agent.title,
-        business_unit: {
+      // Prepare agent context for chat page
+      const agentContext = {
+        agentType: agent?.title || '',
+        agentSubtype: selectedSubtype,
+        businessUnit: {
           id: selectedBU.id,
           code: selectedBU.code,
           display_name: selectedBU.display_name,
           description: selectedBU.description
         },
-        line_of_business: selectedLOB ? {
+        lineOfBusiness: selectedLOB ? {
           id: selectedLOB.id,
           code: selectedLOB.code,
           name: selectedLOB.name,
           description: selectedLOB.description
         } : null,
-        prompt: prompt.trim(),
+        initialPrompt: prompt.trim(),
         timestamp: new Date().toISOString()
       };
 
-      console.log('Sending request to backend:', payload);
+      // Store context in sessionStorage for chat page to access
+      sessionStorage.setItem('agentChatContext', JSON.stringify(agentContext));
 
-      // Send POST request to FastAPI backend
-      const response = await axios.post(`${BACKEND_API_URL}/api/agent/execute`, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 120000 // 2 minute timeout
-      });
-
-      console.log('Backend response:', response.data);
-
-      // Show response in popup
-      setApiResponse(response.data.response || JSON.stringify(response.data, null, 2));
-      setShowResponse(true);
-
+      // Navigate to chat page
+      window.location.href = '/agent-chat';
     } catch (err: any) {
-      console.error('Error calling backend:', err);
-      setError(err.response?.data?.detail || err.message || 'Failed to connect to backend');
-      setShowResponse(true);
-    } finally {
+      console.error('Error launching agent:', err);
+      setError(err.message || 'Failed to launch agent');
       setIsLaunching(false);
     }
   };
@@ -151,45 +144,48 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     return selectedBU.display_name;
   };
 
-  // Suggested prompts based on agent type
+  // Suggested prompts based on agent type and subtype
   const getSuggestions = () => {
-    switch (agent.title) {
-      case 'Forecasting':
-        return [
-          'Generate a comprehensive forecast',
-          'Show me demand trends',
-          'Predict next quarter volume',
-          'Analyze historical patterns'
-        ];
-      case 'Short Term Forecasting':
-        return [
-          'Generate 2-week forecast',
-          'Predict next week demand',
-          'Weekly trend analysis',
-          'Immediate volume predictions'
-        ];
-      case 'Long Term Forecasting':
-        return [
-          'Generate 6-month forecast',
-          'Predict quarterly demand',
-          'Long-term trend analysis',
-          'Annual volume projections'
-        ];
-      case 'Tactical Capacity Planning':
-        return [
-          'Optimize this week\'s schedule',
-          'Short-term resource allocation',
-          'Daily staffing requirements',
-          'Immediate capacity gaps'
-        ];
-      case 'Strategic Capacity Planning':
-        return [
-          'Long-term workforce planning',
-          'Quarterly capacity strategy',
-          'Infrastructure requirements',
-          'Annual resource planning'
-        ];
-      case 'What If & Scenario Analyst':
+    // Handle agents with toggle (Forecasting, Capacity Planning)
+    if (agent?.hasToggle && selectedSubtype) {
+      if (agent.title === 'Forecasting') {
+        if (selectedSubtype === 'Short-term (STF)') {
+          return [
+            'Generate 2-week forecast',
+            'Predict next week demand',
+            'Weekly trend analysis',
+            'Immediate volume predictions'
+          ];
+        } else {
+          return [
+            'Generate 6-month forecast',
+            'Predict quarterly demand',
+            'Long-term trend analysis',
+            'Annual volume projections'
+          ];
+        }
+      } else if (agent.title === 'Capacity Planning') {
+        if (selectedSubtype === 'Tactical') {
+          return [
+            'Optimize this week\'s schedule',
+            'Short-term resource allocation',
+            'Daily staffing requirements',
+            'Immediate capacity gaps'
+          ];
+        } else {
+          return [
+            'Long-term workforce planning',
+            'Quarterly capacity strategy',
+            'Infrastructure requirements',
+            'Annual resource planning'
+          ];
+        }
+      }
+    }
+    
+    // Fallback for agents without toggle
+    switch (agent?.title) {
+      case 'What If / Scenario':
         return [
           'Compare multiple scenarios',
           'Impact of 20% volume increase',
@@ -456,102 +452,6 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
           </div>
         </div>
       </div>
-
-      {/* Response Popup Dialog */}
-      {showResponse && (
-        <>
-          {/* Popup Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[3000] transition-opacity duration-300"
-            onClick={() => setShowResponse(false)}
-          />
-
-          {/* Popup Content */}
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-3xl max-h-[80vh] bg-background border border-border rounded-xl shadow-2xl z-[3001] overflow-hidden">
-            {/* Popup Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border bg-background/95">
-              <div className="flex items-center gap-3">
-                {error ? (
-                  <>
-                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">Error</h3>
-                      <p className="text-sm text-muted-foreground">Failed to get response</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">Agent Response</h3>
-                      <p className="text-sm text-muted-foreground">{agent.title}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowResponse(false)}
-                className="rounded-full hover:bg-accent"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Popup Body */}
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-160px)] bg-background">
-              {error ? (
-                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-                  <p className="text-red-800 dark:text-red-200 whitespace-pre-wrap">{error}</p>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/50 dark:bg-muted/30 p-4">
-                  <pre className="text-foreground whitespace-pre-wrap font-mono text-sm">
-                    {apiResponse}
-                  </pre>
-                </div>
-              )}
-
-              {/* Context Info */}
-              {selectedBU && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <h4 className="text-sm font-medium text-foreground mb-2">Request Context:</h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p><span className="font-medium">Business Unit:</span> {selectedBU.display_name}</p>
-                    {selectedLOB && <p><span className="font-medium">LOB:</span> {selectedLOB.name}</p>}
-                    <p><span className="font-medium">Prompt:</span> {prompt}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Popup Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-background/95">
-              <Button
-                variant="outline"
-                onClick={() => setShowResponse(false)}
-                className="border-border hover:bg-accent"
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowResponse(false);
-                  setPrompt('');
-                }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                Start New Request
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
     </>
   );
 }
