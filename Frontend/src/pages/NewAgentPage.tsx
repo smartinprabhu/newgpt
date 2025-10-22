@@ -7,6 +7,19 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AuthService from '../auth/utils/authService';
 import axios from 'axios';
 
+interface AgentConfig {
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  link: string | null;
+  available: boolean;
+  hasToggle?: boolean;
+  subtypes?: string[];
+}
+
 const NewAgentPage = () => {
   const [activeTab, setActiveTab] = React.useState('NewAgent');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -85,76 +98,52 @@ const NewAgentPage = () => {
     fetchBusinessDataAndLOBs();
   }, []);
 
-  const agents = [
+  const agents: AgentConfig[] = [
     {
       title: 'Forecasting',
-      subtitle: 'General Forecasting',
-      description: 'Comprehensive forecasting agent that handles both short-term and long-term demand predictions.',
+      subtitle: 'Short-term/Long-term',
+      description: 'Predict future demand with advanced forecasting models for immediate and extended planning.',
       icon: <LineChart className="h-6 w-6" />,
       iconBg: 'bg-blue-100 dark:bg-blue-900/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
-      link: 'http://localhost:3001',
-      available: true
+      link: null,
+      available: true,
+      hasToggle: true,
+      subtypes: ['Short-term (STF)', 'Long-term (LTF)']
     },
     {
-      title: 'Short Term Forecasting',
-      subtitle: 'Immediate Planning',
-      description: 'Predict demand for the next 1-4 weeks with high accuracy for tactical operations.',
-      icon: <TrendingUp className="h-6 w-6" />,
-      iconBg: 'bg-cyan-100 dark:bg-cyan-900/30',
-      iconColor: 'text-cyan-600 dark:text-cyan-400',
-      link: 'http://localhost:3001',
-      available: true
-    },
-    {
-      title: 'Long Term Forecasting',
-      subtitle: 'Strategic Planning',
-      description: 'Forecast demand for months or quarters ahead to support strategic business decisions.',
-      icon: <Calendar className="h-6 w-6" />,
-      iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
-      iconColor: 'text-indigo-600 dark:text-indigo-400',
-      link: 'http://localhost:3001',
-      available: true
-    },
-    {
-      title: 'Tactical Capacity Planning',
-      subtitle: 'Operational Planning',
-      description: 'Optimize short-term resource allocation and workforce scheduling for immediate needs.',
+      title: 'Capacity Planning',
+      subtitle: 'Tactical/Strategic',
+      description: 'Optimize resource allocation and workforce planning with strategic capacity analysis.',
       icon: <CalendarCheck className="h-6 w-6" />,
       iconBg: 'bg-green-100 dark:bg-green-900/30',
       iconColor: 'text-green-600 dark:text-green-400',
       link: null,
-      available: false
+      available: true,
+      hasToggle: true,
+      subtypes: ['Tactical', 'Strategic']
     },
     {
-      title: 'Strategic Capacity Planning',
-      subtitle: 'Long-term Planning',
-      description: 'Plan capacity and resources for the long term with strategic workforce and infrastructure decisions.',
-      icon: <Building2 className="h-6 w-6" />,
-      iconBg: 'bg-teal-100 dark:bg-teal-900/30',
-      iconColor: 'text-teal-600 dark:text-teal-400',
-      link: null,
-      available: false
-    },
-    {
-      title: 'What If & Scenario Analyst',
-      subtitle: 'Scenario Planning',
-      description: 'Explore multiple business scenarios, run simulations, and analyze what-if situations.',
+      title: 'What If / Scenario',
+      subtitle: 'Scenario Analysis',
+      description: 'Explore different business scenarios and outcomes to make informed decisions.',
       icon: <GitBranch className="h-6 w-6" />,
       iconBg: 'bg-purple-100 dark:bg-purple-900/30',
       iconColor: 'text-purple-600 dark:text-purple-400',
       link: null,
-      available: false
+      available: false,
+      hasToggle: false
     },
     {
       title: 'Occupancy Modeling',
-      subtitle: 'Space Optimization',
-      description: 'Analyze workspace occupancy patterns and optimize facility utilization for efficiency.',
+      subtitle: 'Utilization Planning',
+      description: 'Analyze workspace occupancy patterns and optimize facility usage and efficiency.',
       icon: <DiamondPercent className="h-6 w-6" />,
       iconBg: 'bg-orange-100 dark:bg-orange-900/30',
       iconColor: 'text-orange-600 dark:text-orange-400',
       link: null,
-      available: false
+      available: false,
+      hasToggle: false
     }
   ];
 
