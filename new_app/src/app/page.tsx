@@ -13,9 +13,14 @@ export default function Home() {
   // Check for existing session on mount
   useEffect(() => {
     const savedAuth = localStorage.getItem('isAuthenticated');
-    if (savedAuth === 'true') {
+    const agentLaunchContext = localStorage.getItem('agentLaunchContext');
+    const skipOnboarding = localStorage.getItem('skipOnboarding');
+    
+    // If coming from Frontend agent launcher, authenticate automatically
+    if (agentLaunchContext || savedAuth === 'true') {
       setIsAuthenticated(true);
     }
+    
     setIsLoading(false);
   }, []);
 
@@ -30,6 +35,8 @@ export default function Home() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('agentLaunchContext');
+    localStorage.removeItem('skipOnboarding');
     window.location.reload();
   };
 
