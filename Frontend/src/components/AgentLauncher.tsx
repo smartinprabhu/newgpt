@@ -103,7 +103,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     setError('');
 
     try {
-      // Prepare agent context for chat page
+      // Prepare complete agent context for new_app
       const agentContext = {
         agentType: agent?.title || '',
         agentSubtype: selectedSubtype,
@@ -120,14 +120,22 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
           description: selectedLOB.description
         } : null,
         initialPrompt: prompt.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        source: 'frontend_agent_launcher' // To identify the source
       };
 
-      // Store context in sessionStorage for chat page to access
-      sessionStorage.setItem('agentChatContext', JSON.stringify(agentContext));
+      // Store context in localStorage for new_app to access
+      localStorage.setItem('agentLaunchContext', JSON.stringify(agentContext));
+      
+      // Mark that onboarding should be skipped
+      localStorage.setItem('skipOnboarding', 'true');
+      
+      // Mark user as authenticated for new_app
+      localStorage.setItem('isAuthenticated', 'true');
 
-      // Navigate to chat page
-      window.location.href = '/agent-chat';
+      // Navigate to new_app (port 3001)
+      window.location.href = 'http://localhost:3001';
+      
     } catch (err: any) {
       console.error('Error launching agent:', err);
       setError(err.message || 'Failed to launch agent');
