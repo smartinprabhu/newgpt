@@ -370,6 +370,30 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
               )}
             </div>
 
+            {/* Agent Subtype Toggle - Only show for agents with toggle */}
+            {agent?.hasToggle && agent?.subtypes && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">
+                  {agent.title === 'Forecasting' ? 'Forecasting Type' : 'Planning Type'}
+                </label>
+                <div className="flex gap-2 p-1 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border">
+                  {agent.subtypes.map((subtype) => (
+                    <button
+                      key={subtype}
+                      onClick={() => setSelectedSubtype(subtype)}
+                      className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                        selectedSubtype === subtype
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                      }`}
+                    >
+                      {subtype}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Initial Prompt */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">What would you like to do?</label>
@@ -401,7 +425,15 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                     key={suggestion}
                     size="sm"
                     variant="outline"
-                    onClick={() => setPrompt(suggestion)}
+                    onClick={() => {
+                      setPrompt(suggestion);
+                      // If BU is selected, immediately launch with this suggestion
+                      if (selectedBU) {
+                        setTimeout(() => {
+                          handleLaunch();
+                        }, 100);
+                      }
+                    }}
                     className="text-xs text-foreground border-border hover:bg-accent hover:text-accent-foreground transition-colors"
                   >
                     {suggestion}
@@ -431,6 +463,13 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                 )}
               </Button>
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+                <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+              </div>
+            )}
 
             {/* Feature Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
