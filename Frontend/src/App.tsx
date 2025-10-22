@@ -36,11 +36,6 @@ const App = () => {
                       {React.createElement(React.lazy(() => import('./pages/NewAgentPage')))}
                     </React.Suspense>
                   } />
-                  <Route path="/agent-chat" element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      {React.createElement(React.lazy(() => import('./pages/AgentChatPage')))}
-                    </React.Suspense>
-                  } />
                   <Route path="/" element={<Index />} />
                   <Route path="*" element={<NotFound />} />
                   {/* Add more protected routes here */}
