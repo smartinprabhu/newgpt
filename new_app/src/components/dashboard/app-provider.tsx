@@ -869,6 +869,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [hasLoadedData, setHasLoadedData] = React.useState(false);
 
+  // Check for agent launch context from Frontend on mount
+  useEffect(() => {
+    const agentContextStr = localStorage.getItem('agentLaunchContext');
+    const skipOnboarding = localStorage.getItem('skipOnboarding');
+    
+    if (agentContextStr && skipOnboarding === 'true') {
+      try {
+        const agentContext = JSON.parse(agentContextStr);
+        console.log('🚀 Agent Launch Context found:', agentContext);
+        
+        // Skip onboarding immediately
+        dispatch({ type: 'END_ONBOARDING' });
+        
+        // Queue the initial prompt to be sent by the chat panel
+        if (agentContext.initialPrompt) {
+          dispatch({ type: 'QUEUE_USER_PROMPT', payload: agentContext.initialPrompt });
+        }
+        
+        // Update initial message with agent context
+        dispatch({
+          type: 'ADD_MESSAGE',
+          payload: {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `🚀 **${agentContext.agentType} Agent${agentContext.agentSubtype ? ` - ${agentContext.agentSubtype}` : ''}**\n\n**Business Unit:** ${agentContext.businessUnit.display_name}${agentContext.lineOfBusiness ? `\n**Line of Business:** ${agentContext.lineOfBusiness.name}` : ''}\n\nInitializing your analysis session...`,
+            agentType: agentContext.agentType.toLowerCase().replace(/\s+/g, '_')
+          }
+        });
+        
+        console.log('✅ Agent context initialized, onboarding skipped');
+        
+        // Clear the flag after reading (keep context for potential use by chat panel)
+        localStorage.removeItem('skipOnboarding');
+        
+      } catch (error) {
+        console.error('❌ Failed to parse agent context:', error);
+        // Clear invalid context
+        localStorage.removeItem('agentLaunchContext');
+        localStorage.removeItem('skipOnboarding');
+      }
+    }
+  }, []); // Run once on mount
+
   // Load business units from backend on mount
   useEffect(() => {
     const loadBusinessUnits = async () => {
