@@ -1818,11 +1818,19 @@ function EnhancedChatBubble({
 }
 
 // Main Enhanced Chat Panel Component
-export default function EnhancedChatPanel({ className }: { className?: string }) {
+export default function EnhancedChatPanel({ 
+  agentType,
+  agentSubtype,
+  businessUnit,
+  lineOfBusiness,
+  initialPrompt,
+  className 
+}: EnhancedChatPanelProps) {
   const { state, dispatch } = useApp();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedPromptsRef = useRef<Set<string>>(new Set());
+  const initialPromptSentRef = useRef(false);
   const [performance, setPerformance] = useState<any>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
@@ -1840,6 +1848,17 @@ export default function EnhancedChatPanel({ className }: { className?: string })
   if (!enhancedChatHandler) {
     enhancedChatHandler = new EnhancedMultiAgentChatHandler(dispatch);
   }
+
+  // Send initial prompt when component mounts
+  useEffect(() => {
+    if (initialPrompt && !initialPromptSentRef.current && state.messages.length === 0) {
+      initialPromptSentRef.current = true;
+      // Small delay to ensure component is fully mounted
+      setTimeout(() => {
+        submitMessage(initialPrompt);
+      }, 300);
+    }
+  }, [initialPrompt]);
 
   // Auto-scroll: ONLY scroll when user is at bottom or sends a message
   useEffect(() => {
