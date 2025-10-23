@@ -27,6 +27,12 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
   const [testResults, setTestResults] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [healthStatus, setHealthStatus] = useState<any>(null);
+  const [isUsingDefaultKey, setIsUsingDefaultKey] = useState(() => {
+    const defaultKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    return enhancedAPIClient.getConfig().openaiKey === defaultKey;
+  });
+  const [showOverrideWarning, setShowOverrideWarning] = useState(false);
+  const [restrictedKeyError, setRestrictedKeyError] = useState('');
 
   useEffect(() => {
     const updateConfig = (newConfig: any) => setConfig(newConfig);
