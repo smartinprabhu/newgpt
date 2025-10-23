@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Settings, User, Bot, BarChart, Sun, Moon, FileText, Printer, UploadCloud, Key } from 'lucide-react';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { useApp } from "@/components/dashboard/app-provider";
+import { useApp } from "@/components/agent-chat/app-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import EnhancedAgentMonitor from './enhanced-agent-monitor';
 import ReportViewer from './report-viewer';
