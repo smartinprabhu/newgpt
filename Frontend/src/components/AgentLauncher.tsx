@@ -138,6 +138,10 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       const frontendUsername = localStorage.getItem('frontend_username') || '';
       const frontendPassword = localStorage.getItem('frontend_password') || '';
       
+      console.log('🚀 AgentLauncher: Preparing to launch to new_app');
+      console.log('📧 Username from localStorage:', frontendUsername ? '✅ Found' : '❌ Not found');
+      console.log('🔑 Password from localStorage:', frontendPassword ? '✅ Found' : '❌ Not found');
+      
       // Encode credentials and context to pass via URL
       const authData = btoa(JSON.stringify({
         username: frontendUsername,
@@ -146,6 +150,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
         skipOnboarding: true
       }));
 
+      console.log('📦 Encoded auth data length:', authData.length);
+      console.log('🔗 Redirect URL:', `http://localhost:3001?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
+      
       // Navigate to new_app (port 3001) with auth data
       window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
       
