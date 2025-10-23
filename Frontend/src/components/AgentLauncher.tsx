@@ -178,38 +178,45 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
   // Suggested prompts based on agent type and subtype
   const getSuggestions = () => {
+    // Common suggestions that appear first for all agents
+    const commonSuggestions = [
+      'Perform EDA',
+      'Data quality check',
+      'Check for anomaly/outliers'
+    ];
+
     // Handle agents with toggle (Forecasting, Capacity Planning)
     if (agent?.hasToggle && selectedSubtype) {
       if (agent.title === 'Forecasting') {
         if (selectedSubtype === 'Short-term (STF)') {
           return [
+            ...commonSuggestions,
             'Generate 2-week forecast',
             'Predict next week demand',
-            'Weekly trend analysis',
-            'Immediate volume predictions'
+            'Weekly trend analysis'
           ];
         } else {
           return [
+            ...commonSuggestions,
             'Generate 6-month forecast',
             'Predict quarterly demand',
-            'Long-term trend analysis',
-            'Annual volume projections'
+            'Long-term trend analysis'
           ];
         }
       } else if (agent.title === 'Capacity Planning') {
         if (selectedSubtype === 'Tactical') {
           return [
+            ...commonSuggestions,
             'Optimize this week\'s schedule',
             'Short-term resource allocation',
-            'Daily staffing requirements',
-            'Immediate capacity gaps'
+            'Daily staffing requirements'
           ];
         } else {
           return [
+            ...commonSuggestions,
             'Long-term workforce planning',
             'Quarterly capacity strategy',
-            'Infrastructure requirements',
-            'Annual resource planning'
+            'Infrastructure requirements'
           ];
         }
       }
@@ -219,20 +226,25 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     switch (agent?.title) {
       case 'What If / Scenario':
         return [
+          ...commonSuggestions,
           'Compare multiple scenarios',
           'Impact of 20% volume increase',
-          'Best vs worst case analysis',
-          'Sensitivity testing'
+          'Best vs worst case analysis'
         ];
       case 'Occupancy Modeling':
         return [
+          ...commonSuggestions,
           'Workspace utilization report',
           'Optimize facility usage',
-          'Occupancy trends analysis',
-          'Space planning recommendations'
+          'Occupancy trends analysis'
         ];
       default:
-        return ['Analyze my data', 'Show insights', 'Generate report'];
+        return [
+          ...commonSuggestions,
+          'Analyze my data',
+          'Show insights',
+          'Generate report'
+        ];
     }
   };
 
