@@ -158,6 +158,42 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
     return 'Status unknown - test your API key';
   };
 
+  // Helper function to check if using default key
+  const checkIfDefaultKey = (apiKey: string): boolean => {
+    const defaultKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    return apiKey === defaultKey;
+  };
+
+  // Handle key input changes with override detection
+  const handleKeyInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    const defaultKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    
+    // Check if user is changing from default key
+    if (config.openaiKey === defaultKey && newValue !== defaultKey) {
+      setShowOverrideWarning(true);
+    }
+    
+    // Update config
+    setConfig(prev => ({ ...prev, openaiKey: newValue }));
+    
+    // Update isUsingDefaultKey state
+    setIsUsingDefaultKey(checkIfDefaultKey(newValue));
+    
+    // Clear restricted key error when typing
+    setRestrictedKeyError('');
+  };
+
+  // Handle reset to default key
+  const handleResetToDefault = () => {
+    const defaultKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    setConfig(prev => ({ ...prev, openaiKey: defaultKey }));
+    setShowOverrideWarning(false);
+    setIsUsingDefaultKey(true);
+    setTestResults(prev => ({ ...prev, openai: undefined }));
+    setRestrictedKeyError('');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -233,7 +269,7 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
                         type="password"
                         placeholder="sk-..."
                         value={config.openaiKey}
-                        onChange={(e) => setConfig(prev => ({ ...prev, openaiKey: e.target.value }))}
+                        onChange={(e) => handleKeyInputChange(e)}
                         className="font-mono"
                       />
                       <Button
