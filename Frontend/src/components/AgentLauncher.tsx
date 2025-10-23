@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Sparkles, Brain, Loader2, ChevronRight, Building2, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,6 +57,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [isLaunching, setIsLaunching] = useState(false);
   const [error, setError] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
   const BACKEND_API_URL = 'http://localhost:8000'; // FastAPI backend URL
 
@@ -103,7 +105,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     setError('');
 
     try {
-      // Prepare complete agent context for new_app
+      // Prepare complete agent context for agent chat
       const agentContext = {
         agentType: agent?.title || '',
         agentSubtype: selectedSubtype,
@@ -121,40 +123,21 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
         } : null,
         initialPrompt: prompt.trim(),
         timestamp: new Date().toISOString(),
-        source: 'frontend_agent_launcher' // To identify the source
+        source: 'frontend_agent_launcher'
       };
 
-      // Store context in localStorage for new_app to access
+      // Store context in localStorage for AgentChatPage to access
       localStorage.setItem('agentLaunchContext', JSON.stringify(agentContext));
       
-      // Mark that onboarding should be skipped
-      localStorage.setItem('skipOnboarding', 'true');
+      // Close drawer
+      onClose();
       
+
       // Mark user as authenticated for new_app
       localStorage.setItem('isAuthenticated', 'true');
-      
-      // Pass Frontend user credentials to new_app via URL parameters
-      // (localStorage is not shared between different ports)
-      const frontendUsername = localStorage.getItem('frontend_username') || '';
-      const frontendPassword = localStorage.getItem('frontend_password') || '';
-      
-      console.log('🚀 AgentLauncher: Preparing to launch to new_app');
-      console.log('📧 Username from localStorage:', frontendUsername ? '✅ Found' : '❌ Not found');
-      console.log('🔑 Password from localStorage:', frontendPassword ? '✅ Found' : '❌ Not found');
-      
-      // Encode credentials and context to pass via URL
-      const authData = btoa(JSON.stringify({
-        username: frontendUsername,
-        password: frontendPassword,
-        agentContext: agentContext,
-        skipOnboarding: true
-      }));
 
-      console.log('📦 Encoded auth data length:', authData.length);
-      console.log('🔗 Redirect URL:', `http://localhost:3001?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
-      
-      // Navigate to new_app (port 3001) with auth data
-      window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
+      // Navigate to new_app (port 3001)
+      window.location.href = 'http://localhost:3001';
       
     } catch (err: any) {
       console.error('Error launching agent:', err);
