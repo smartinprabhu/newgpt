@@ -186,8 +186,8 @@ const NewAgentPage = () => {
           skipOnboarding: true
         }));
 
-        // Redirect to port 3001 with auth parameter
-        window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
+        // Open socchat.netlify.com in new tab with auth parameter
+        window.open(`https://socchat.netlify.com?auth=${encodeURIComponent(authData)}`, '_blank');
         return;
       }
 
