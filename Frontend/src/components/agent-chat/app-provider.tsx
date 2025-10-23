@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { BusinessUnit, LineOfBusiness, ChatMessage, WorkflowStep } from '@/lib/types';
 import { mockBusinessUnits } from '@/lib/data';
 import type { AgentMonitorProps } from '@/lib/types';
@@ -63,8 +63,8 @@ const initialState: AppState = {
     {
       id: '1',
       role: 'assistant',
-      content: "Hello! I'm your BI forecasting assistant. Select a Business Unit and Line of Business to get started.",
-      suggestions: ['Compare LOB performance', 'Summarize the key business drivers', 'Upload new data']
+      content: "Hello! I'm your AI agent assistant. I'm ready to help you analyze your data.",
+      suggestions: ['Analyze data patterns', 'Generate forecast', 'Show insights']
     },
   ],
   workflow: [],
@@ -77,9 +77,9 @@ const initialState: AppState = {
   dataPanelMode: 'chart',
   dataPanelTarget: 'Value',
   dataPanelWidthPct: 40,
-  isOnboarding: true,
+  isOnboarding: false, // Skip onboarding, use drawer instead
   queuedUserPrompt: null,
-  isAuthenticated: typeof window !== "undefined" ? localStorage.getItem("isAuthenticated") === "true" : false,
+  isAuthenticated: true, // Always authenticated here (checked by AgentChatPage)
 };
 
 const getRandomColor = () => {
@@ -263,6 +263,44 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Initialize from AgentLauncher context
+  useEffect(() => {
+    const contextStr = localStorage.getItem('agentLaunchContext');
+    if (contextStr) {
+      try {
+        const context = JSON.parse(contextStr);
+        
+        // Find matching BU and LOB from businessUnits
+        const bu = state.businessUnits.find(
+          (b) => b.id === context.businessUnit?.id || b.name === context.businessUnit?.display_name
+        );
+        
+        if (bu) {
+          dispatch({ type: 'SET_SELECTED_BU', payload: bu });
+          
+          if (context.lineOfBusiness) {
+            const lob = bu.lobs.find(
+              (l) => l.id === context.lineOfBusiness.id || l.name === context.lineOfBusiness.name
+            );
+            if (lob) {
+              dispatch({ type: 'SET_SELECTED_LOB', payload: lob });
+            }
+          }
+        }
+
+        // Add initial user prompt if provided
+        if (context.initialPrompt) {
+          dispatch({ type: 'QUEUE_USER_PROMPT', payload: context.initialPrompt });
+        }
+
+        // Clear context after reading (optional, prevents re-reading on refresh)
+        // localStorage.removeItem('agentLaunchContext');
+      } catch (error) {
+        console.error('Failed to parse agent launch context:', error);
+      }
+    }
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
