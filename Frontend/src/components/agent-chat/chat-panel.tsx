@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Bot, Paperclip, Send, User, BarChart, CheckCircle, FileText } from 'lucide-react';
-import { useApp } from "@/components/dashboard/app-provider";
+import { useApp } from "./app-provider";
 import type { ChatMessage, WeeklyData, WorkflowStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import AgentMonitorPanel from './agent-monitor';
