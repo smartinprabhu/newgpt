@@ -73,6 +73,23 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
   };
 
   const handleSave = async () => {
+    // Validate API key against restricted keys
+    const validation = validateAPIKey(config.openaiKey.trim());
+    if (!validation.isValid) {
+      if (validation.error && validation.error.includes('restricted')) {
+        // Auto-clear the field for restricted keys
+        setConfig(prev => ({ ...prev, openaiKey: '' }));
+        setRestrictedKeyError(validation.error);
+        alert(validation.error);
+        return;
+      } else {
+        // Other validation errors (empty key, etc.)
+        setRestrictedKeyError(validation.error || '');
+        alert(validation.error);
+        return;
+      }
+    }
+
     // Validate at least one provider is enabled
     if (config.enableOpenAI === false && config.enableOpenRouter === false) {
       alert('At least one API provider must be enabled');
@@ -89,7 +106,9 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
     setSaving(true);
 
     try {
-      enhancedAPIClient.updateConfig(config);
+      // Trim the API key before saving
+      const trimmedConfig = { ...config, openaiKey: config.openaiKey.trim() };
+      enhancedAPIClient.updateConfig(trimmedConfig);
 
       // Refresh health status
       await checkHealth();
