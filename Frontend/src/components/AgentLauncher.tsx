@@ -287,232 +287,253 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
         {/* Content */}
         <div className="h-[calc(100vh-80px)] overflow-y-auto bg-background">
-          <div className="p-5 space-y-3">
-            {/* Hero Section */}
-            <div className="relative">
-              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 dark:from-primary/20 dark:via-transparent dark:to-primary/10" />
-
-              <div className="text-center space-y-2 py-3">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 px-3 py-1 text-primary text-xs font-medium border border-primary/20">
-                  <Sparkles className="h-4 w-4" /> AI-Powered Intelligence
-                </div>
-
-                <h3 className="text-2xl font-bold tracking-tight text-foreground">
-                  Launch {agent.title}
-                </h3>
-
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  {agent.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Hierarchical BU/LOB Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Select Business Unit & Line of Business</label>
-
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between h-auto min-h-[44px] px-4 py-3 border-border hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="flex items-center gap-2 text-left flex-1">
-                      {selectedBU ? (
-                        <>
-                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate text-foreground">{getSelectionText()}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground">Choose a business unit...</span>
-                        </>
-                      )}
-                    </span>
-                    <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  className="w-[500px] max-h-[500px] overflow-y-auto bg-popover border-border"
-                  sideOffset={5}
-                  align="start"
-                  style={{ zIndex: 2100 }}
-                >
-                  <DropdownMenuLabel className="text-foreground">Business Units & Lines of Business</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-border" />
-
-                  {businessUnits.length === 0 ? (
-                    <DropdownMenuItem disabled className="text-muted-foreground">
-                      No business units available
-                    </DropdownMenuItem>
-                  ) : (
-                    businessUnits.map((bu) => (
-                      <React.Fragment key={bu.code}>
-                        {/* Business Unit Header - Always Clickable */}
-                        <DropdownMenuItem
-                          onClick={() => handleBUSelect(bu)}
-                          className="font-medium bg-muted/50 hover:bg-muted dark:bg-muted/30 dark:hover:bg-muted/50 cursor-pointer"
-                        >
-                          <Building2 className="h-4 w-4 mr-2 text-primary" />
-                          <div className="flex flex-col flex-1">
-                            <span className="text-foreground">{bu.display_name}</span>
-                            {bu.description && (
-                              <span className="text-xs font-normal text-muted-foreground">{bu.description}</span>
-                            )}
-                          </div>
-                          {bu.lobs && bu.lobs.length > 0 && (
-                            <span className="text-xs text-muted-foreground ml-2">
-                              {bu.lobs.length} LOB{bu.lobs.length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </DropdownMenuItem>
-
-                        {/* LOBs under this BU - Indented */}
-                        {bu.lobs && bu.lobs.length > 0 && bu.lobs.map((lob) => (
-                          <DropdownMenuItem
-                            key={lob.id}
-                            onClick={() => handleLOBSelect(bu, lob)}
-                            className="pl-8 cursor-pointer hover:bg-accent"
-                          >
-                            <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
-                            <div className="flex flex-col flex-1">
-                              <span className="text-foreground">{lob.name}</span>
-                              {lob.description && (
-                                <span className="text-xs text-muted-foreground">{lob.description}</span>
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-
-                        {/* Separator between BUs */}
-                        <DropdownMenuSeparator className="bg-border" />
-                      </React.Fragment>
-                    ))
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Selection Display */}
-              {selectedBU && (
-                <div className="rounded-lg border border-border bg-muted/50 dark:bg-muted/30 p-3 space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-foreground">Business Unit:</span>
-                    <span className="text-foreground">{selectedBU.display_name}</span>
-                  </div>
-                  {selectedLOB && (
-                    <div className="flex items-center gap-2 text-sm pl-6 border-l-2 border-primary/30">
-                      <Layers className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-foreground">LOB:</span>
-                      <span className="text-foreground">{selectedLOB.name}</span>
-                    </div>
-                  )}
+          {showIframe ? (
+            // Iframe view with loading overlay
+            <div className="relative w-full h-full">
+              {iframeLoading && (
+                <div className="absolute inset-0 bg-background flex items-center justify-center z-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Loading agent interface...</span>
                 </div>
               )}
+              <iframe
+                key={iframeKey}
+                src="/agent-app"
+                className="w-full h-full border-0"
+                title="AI Agent Interface"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                onLoad={() => setIframeLoading(false)}
+              />
             </div>
+          ) : (
+            // Existing selector UI
+            <div className="p-5 space-y-3">
+              {/* Hero Section */}
+              <div className="relative">
+                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 dark:from-primary/20 dark:via-transparent dark:to-primary/10" />
 
-            {/* Agent Subtype Toggle - Only show for agents with toggle */}
-            {agent?.hasToggle && agent?.subtypes && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">
-                  {agent.title === 'Forecasting' ? 'Forecasting Type' : 'Planning Type'}
-                </label>
-                <div className="flex gap-2 p-1 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border">
-                  {agent.subtypes.map((subtype) => (
-                    <button
-                      key={subtype}
-                      onClick={() => setSelectedSubtype(subtype)}
-                      className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                        selectedSubtype === subtype
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-                      }`}
+                <div className="text-center space-y-2 py-3">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 px-3 py-1 text-primary text-xs font-medium border border-primary/20">
+                    <Sparkles className="h-4 w-4" /> AI-Powered Intelligence
+                  </div>
+
+                  <h3 className="text-2xl font-bold tracking-tight text-foreground">
+                    Launch {agent.title}
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    {agent.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Hierarchical BU/LOB Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Select Business Unit & Line of Business</label>
+
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between h-auto min-h-[44px] px-4 py-3 border-border hover:bg-accent hover:text-accent-foreground"
                     >
-                      {subtype}
-                    </button>
+                      <span className="flex items-center gap-2 text-left flex-1">
+                        {selectedBU ? (
+                          <>
+                            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate text-foreground">{getSelectionText()}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-muted-foreground">Choose a business unit...</span>
+                          </>
+                        )}
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent 
+                    className="w-[500px] max-h-[500px] overflow-y-auto bg-popover border-border"
+                    sideOffset={5}
+                    align="start"
+                    style={{ zIndex: 2100 }}
+                  >
+                    <DropdownMenuLabel className="text-foreground">Business Units & Lines of Business</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-border" />
+
+                    {businessUnits.length === 0 ? (
+                      <DropdownMenuItem disabled className="text-muted-foreground">
+                        No business units available
+                      </DropdownMenuItem>
+                    ) : (
+                      businessUnits.map((bu) => (
+                        <React.Fragment key={bu.code}>
+                          {/* Business Unit Header - Always Clickable */}
+                          <DropdownMenuItem
+                            onClick={() => handleBUSelect(bu)}
+                            className="font-medium bg-muted/50 hover:bg-muted dark:bg-muted/30 dark:hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Building2 className="h-4 w-4 mr-2 text-primary" />
+                            <div className="flex flex-col flex-1">
+                              <span className="text-foreground">{bu.display_name}</span>
+                              {bu.description && (
+                                <span className="text-xs font-normal text-muted-foreground">{bu.description}</span>
+                              )}
+                            </div>
+                            {bu.lobs && bu.lobs.length > 0 && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {bu.lobs.length} LOB{bu.lobs.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </DropdownMenuItem>
+
+                          {/* LOBs under this BU - Indented */}
+                          {bu.lobs && bu.lobs.length > 0 && bu.lobs.map((lob) => (
+                            <DropdownMenuItem
+                              key={lob.id}
+                              onClick={() => handleLOBSelect(bu, lob)}
+                              className="pl-8 cursor-pointer hover:bg-accent"
+                            >
+                              <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <div className="flex flex-col flex-1">
+                                <span className="text-foreground">{lob.name}</span>
+                                {lob.description && (
+                                  <span className="text-xs text-muted-foreground">{lob.description}</span>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+
+                          {/* Separator between BUs */}
+                          <DropdownMenuSeparator className="bg-border" />
+                        </React.Fragment>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Selection Display */}
+                {selectedBU && (
+                  <div className="rounded-lg border border-border bg-muted/50 dark:bg-muted/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-foreground">Business Unit:</span>
+                      <span className="text-foreground">{selectedBU.display_name}</span>
+                    </div>
+                    {selectedLOB && (
+                      <div className="flex items-center gap-2 text-sm pl-6 border-l-2 border-primary/30">
+                        <Layers className="h-4 w-4 text-primary" />
+                        <span className="font-medium text-foreground">LOB:</span>
+                        <span className="text-foreground">{selectedLOB.name}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Agent Subtype Toggle - Only show for agents with toggle */}
+              {agent?.hasToggle && agent?.subtypes && (
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-foreground">
+                    {agent.title === 'Forecasting' ? 'Forecasting Type' : 'Planning Type'}
+                  </label>
+                  <div className="flex gap-2 p-1 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border">
+                    {agent.subtypes.map((subtype) => (
+                      <button
+                        key={subtype}
+                        onClick={() => setSelectedSubtype(subtype)}
+                        className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                          selectedSubtype === subtype
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                        }`}
+                      >
+                        {subtype}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Initial Prompt */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">What would you like to do?</label>
+                <div className="rounded-xl border border-border bg-card dark:bg-card p-4 shadow-sm">
+                  <div className="flex items-start gap-2">
+                    <Textarea
+                      ref={textareaRef}
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Describe your analysis needs..."
+                      className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none overflow-hidden min-h-[80px] border-0"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && canLaunch) {
+                          e.preventDefault();
+                          handleLaunch();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Suggested Prompts */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Quick Suggestions</label>
+                <div className="flex flex-wrap gap-2">
+                  {getSuggestions().map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setPrompt(suggestion);
+                        // If BU is selected, immediately launch with this suggestion
+                        if (selectedBU) {
+                          setTimeout(() => {
+                            handleLaunch();
+                          }, 100);
+                        }
+                      }}
+                      className="text-xs text-foreground border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      {suggestion}
+                    </Button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Initial Prompt */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">What would you like to do?</label>
-              <div className="rounded-xl border border-border bg-card dark:bg-card p-4 shadow-sm">
-                <div className="flex items-start gap-2">
-                  <Textarea
-                    ref={textareaRef}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe your analysis needs..."
-                    className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none overflow-hidden min-h-[80px] border-0"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && canLaunch) {
-                        e.preventDefault();
-                        handleLaunch();
-                      }
-                    }}
-                  />
+              {/* Launch Button */}
+              <div>
+                <Button
+                  onClick={handleLaunch}
+                  disabled={!canLaunch || isLaunching}
+                  className="w-full h-12 text-base font-semibold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  size="lg"
+                >
+                  {isLaunching ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Launching {agent.title}...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-5 w-5" />
+                      Launch Agent
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+                  <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Suggested Prompts */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Quick Suggestions</label>
-              <div className="flex flex-wrap gap-2">
-                {getSuggestions().map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setPrompt(suggestion);
-                      // If BU is selected, immediately launch with this suggestion
-                      if (selectedBU) {
-                        setTimeout(() => {
-                          handleLaunch();
-                        }, 100);
-                      }
-                    }}
-                    className="text-xs text-foreground border-border hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    {suggestion}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Launch Button */}
-            <div>
-              <Button
-                onClick={handleLaunch}
-                disabled={!canLaunch || isLaunching}
-                className="w-full h-12 text-base font-semibold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-                size="lg"
-              >
-                {isLaunching ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Launching {agent.title}...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="h-5 w-5" />
-                    Launch Agent
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Error Display */}
-            {error && (
-              <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-                <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </>
