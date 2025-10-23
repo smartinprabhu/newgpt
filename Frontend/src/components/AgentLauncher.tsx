@@ -54,6 +54,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const [selectedLOB, setSelectedLOB] = useState<LOB | null>(null);
   const [selectedSubtype, setSelectedSubtype] = useState<string>('');
   const [isLaunching, setIsLaunching] = useState(false);
+  const [showIframe, setShowIframe] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
+  const [iframeKey, setIframeKey] = useState(0);
   const [error, setError] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,13 +70,15 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
     }
   }, [prompt]);
 
-  // Reset state when opening
+  // Reset state when opening/closing
   useEffect(() => {
     if (isOpen) {
       setPrompt('');
       setSelectedBU(null);
       setSelectedLOB(null);
       setIsLaunching(false);
+      setShowIframe(false);
+      setIframeLoading(true);
       setError('');
       // Initialize subtype to first option if agent has toggle
       if (agent?.hasToggle && agent?.subtypes && agent.subtypes.length > 0) {
@@ -81,6 +86,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       } else {
         setSelectedSubtype('');
       }
+    } else {
+      // Clean up auth data when drawer closes
+      localStorage.removeItem('agent_auth_data');
     }
   }, [isOpen, agent]);
 
