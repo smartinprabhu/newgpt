@@ -161,8 +161,15 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       console.log('📦 Encoded auth data length:', authData.length);
       console.log('🔗 Redirect URL:', `http://localhost:3001?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
       
-      // Navigate to new_app (port 3001) with auth data
-      window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
+      // Store encoded auth data in localStorage for iframe to access
+      localStorage.setItem('agent_auth_data', authData);
+      
+      // Increment iframe key to force reload
+      setIframeKey(prev => prev + 1);
+      
+      // Transition drawer to iframe view
+      setShowIframe(true);
+      setIsLaunching(false);
       
     } catch (err: any) {
       console.error('Error launching agent:', err);
