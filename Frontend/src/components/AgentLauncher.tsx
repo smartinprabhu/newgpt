@@ -249,7 +249,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-3 border-b border-border bg-background/95 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${agent.iconColor.replace('text-', 'bg-').replace('600', '100')} ${agent.iconColor.replace('text-', 'dark:bg-').replace('600', '900/30')}`}>
               {agent.icon}
@@ -272,7 +272,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
         {/* Content */}
         <div className="h-[calc(100vh-80px)] overflow-y-auto bg-background">
-          <div className="p-5 space-y-3">
+          <div className="p-4 space-y-4">
             {/* Hero Section */}
             <div className="relative">
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 dark:from-primary/20 dark:via-transparent dark:to-primary/10" />
