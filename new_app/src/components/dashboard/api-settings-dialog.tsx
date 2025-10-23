@@ -264,14 +264,23 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
                   <div className="space-y-2">
                     <Label htmlFor="openai-key">API Key</Label>
                     <div className="flex gap-2">
-                      <Input
+                      <SecuredInput
                         id="openai-key"
                         type="password"
                         placeholder="sk-..."
                         value={config.openaiKey}
-                        onChange={(e) => handleKeyInputChange(e)}
-                        className="font-mono"
+                        onChange={handleKeyInputChange}
+                        className={`font-mono ${showOverrideWarning ? 'border-yellow-500 border-2' : ''}`}
                       />
+                      {!isUsingDefaultKey && (
+                        <Button
+                          variant="outline"
+                          onClick={handleResetToDefault}
+                          title="Reset to default API key"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         onClick={() => handleTestKey('openai')}
@@ -285,6 +294,22 @@ export default function APISettingsDialog({ open, onOpenChange }: APISettingsDia
                         Test
                       </Button>
                     </div>
+                    {showOverrideWarning && (
+                      <Alert className="bg-yellow-50 border-yellow-500">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-800">
+                          ⚠️ You are overriding the default API key. Make sure you enter a valid key.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {restrictedKeyError && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          {restrictedKeyError}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <div className="flex items-center gap-2 text-sm">
                       {getStatusIcon('openai')}
                       <span className={`${testResults.openai?.isValid || healthStatus?.openai?.available
