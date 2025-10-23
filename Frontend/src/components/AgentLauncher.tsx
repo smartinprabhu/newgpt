@@ -242,10 +242,9 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             </div>
           </div>
           <Button
-            variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full hover:bg-accent"
+            className="bg-muted hover:bg-muted/80 dark:bg-muted dark:hover:bg-muted/60 border border-border"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -253,28 +252,28 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
 
         {/* Content */}
         <div className="h-[calc(100vh-80px)] overflow-y-auto bg-background">
-          <div className="p-6 space-y-6">
+          <div className="p-5 space-y-3">
             {/* Hero Section */}
             <div className="relative">
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 dark:from-primary/20 dark:via-transparent dark:to-primary/10" />
 
-              <div className="text-center space-y-4 py-8">
+              <div className="text-center space-y-2 py-3">
                 <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 px-3 py-1 text-primary text-xs font-medium border border-primary/20">
                   <Sparkles className="h-4 w-4" /> AI-Powered Intelligence
                 </div>
 
-                <h3 className="text-3xl font-bold tracking-tight text-foreground">
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">
                   Launch {agent.title}
                 </h3>
 
-                <p className="text-muted-foreground max-w-md mx-auto">
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   {agent.description}
                 </p>
               </div>
             </div>
 
             {/* Hierarchical BU/LOB Selection */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Select Business Unit & Line of Business</label>
 
               <DropdownMenu modal={false}>
@@ -403,7 +402,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             )}
 
             {/* Initial Prompt */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">What would you like to do?</label>
               <div className="rounded-xl border border-border bg-card dark:bg-card p-4 shadow-sm">
                 <div className="flex items-start gap-2">
@@ -412,7 +411,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Describe your analysis needs..."
-                    className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none overflow-hidden min-h-[100px] border-0"
+                    className="flex-1 bg-background text-foreground placeholder:text-muted-foreground rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none overflow-hidden min-h-[80px] border-0"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && canLaunch) {
                         e.preventDefault();
@@ -451,7 +450,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
             </div>
 
             {/* Launch Button */}
-            <div className="pt-4">
+            <div>
               <Button
                 onClick={handleLaunch}
                 disabled={!canLaunch || isLaunching}
@@ -478,24 +477,6 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
                 <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
               </div>
             )}
-
-            {/* Feature Highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
-              <div className="rounded-lg border border-border p-4 bg-card dark:bg-card/50">
-                <Building2 className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1 text-foreground">Context-Aware</h4>
-                <p className="text-xs text-muted-foreground">
-                  Analysis tailored to your selected business unit and LOB
-                </p>
-              </div>
-              <div className="rounded-lg border border-border p-4 bg-card dark:bg-card/50">
-                <Sparkles className="h-5 w-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm mb-1 text-foreground">AI-Powered Insights</h4>
-                <p className="text-xs text-muted-foreground">
-                  Get intelligent recommendations based on your data
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
