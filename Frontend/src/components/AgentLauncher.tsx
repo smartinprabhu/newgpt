@@ -58,6 +58,7 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const BACKEND_API_URL = 'http://localhost:8000'; // FastAPI backend URL
+  const REDIRECT_URL = import.meta.env.VITE_REDIRECT_URL || 'http://localhost:3001';
 
   // Auto-resize textarea
   useEffect(() => {
@@ -151,10 +152,10 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       }));
 
       console.log('📦 Encoded auth data length:', authData.length);
-      console.log('🔗 Redirect URL:', `http://localhost:3001?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
+      console.log('🔗 Redirect URL:', `${REDIRECT_URL}?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
       
       // Navigate to new_app (port 3001) with auth data in new tab
-      window.open(`http://localhost:3001?auth=${encodeURIComponent(authData)}`, '_blank');
+      window.open(`${REDIRECT_URL}?auth=${encodeURIComponent(authData)}`, '_blank');
       
       // Reset form after successful launch
       setPrompt('');
