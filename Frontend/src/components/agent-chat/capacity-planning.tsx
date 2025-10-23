@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useApp } from '@/components/dashboard/app-provider';
+import { useApp } from './app-provider';
 
 export default function CapacityPlanning() {
   const { state, dispatch } = useApp();

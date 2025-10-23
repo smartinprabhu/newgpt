@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Bot, Paperclip, Send, User, BarChart, CheckCircle, FileText, Brain, TrendingUp, AlertCircle, Zap, Settings } from 'lucide-react';
 import TableSnippet from '@/components/ui/table-snippet';
-import { useApp } from "@/components/dashboard/app-provider";
+import { useApp } from "./app-provider";
 import type { ChatMessage, WeeklyData, WorkflowStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import EnhancedAgentMonitor from './enhanced-agent-monitor';

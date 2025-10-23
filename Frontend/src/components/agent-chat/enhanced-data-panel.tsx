@@ -9,7 +9,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { useApp } from "@/components/dashboard/app-provider";
+import { useApp } from "./app-provider";
 import BuLobSelector from "./bu-lob-selector";
 import EnhancedDataVisualizer from "./enhanced-data-visualizer";
 import { Calendar } from "@/components/ui/calendar";
