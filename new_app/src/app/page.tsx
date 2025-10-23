@@ -12,10 +12,55 @@ export default function Home() {
 
   // Check for existing session on mount
   useEffect(() => {
+    // First, check for auth data from Frontend (passed via URL)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const authData = urlParams.get('auth');
+      
+      if (authData) {
+        try {
+          // Decode and parse auth data
+          const decoded = JSON.parse(atob(decodeURIComponent(authData)));
+          
+          // Store credentials in new_app's localStorage
+          if (decoded.username && decoded.password) {
+            localStorage.setItem('zentere_username', decoded.username);
+            localStorage.setItem('zentere_password', decoded.password);
+            localStorage.setItem('isAuthenticated', 'true');
+          }
+          
+          // Store agent context if provided
+          if (decoded.agentContext) {
+            localStorage.setItem('agentLaunchContext', JSON.stringify(decoded.agentContext));
+          }
+          
+          // Store skipOnboarding flag
+          if (decoded.skipOnboarding) {
+            localStorage.setItem('skipOnboarding', 'true');
+          }
+          
+          // Clean URL (remove auth parameter)
+          window.history.replaceState({}, '', '/');
+          
+          // Set authenticated and stop loading
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.error('Failed to parse auth data:', error);
+        }
+      }
+    }
+    
+    // Normal authentication check (no auth param in URL)
     const savedAuth = localStorage.getItem('isAuthenticated');
-    if (savedAuth === 'true') {
+    const agentLaunchContext = localStorage.getItem('agentLaunchContext');
+    
+    // If coming from Frontend agent launcher, authenticate automatically
+    if (agentLaunchContext || savedAuth === 'true') {
       setIsAuthenticated(true);
     }
+    
     setIsLoading(false);
   }, []);
 
@@ -30,6 +75,8 @@ export default function Home() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('agentLaunchContext');
+    localStorage.removeItem('skipOnboarding');
     window.location.reload();
   };
 

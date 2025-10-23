@@ -32,7 +32,11 @@ const App = () => {
                   <Route path="/dashboard" element={<Index />} />
                   <Route path="/company" element={<MainContent />} />
                   <Route path="/new-agent" element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
+                    <React.Suspense fallback={
+                      <div className="min-h-screen bg-background flex items-center justify-center">
+                        <div className="text-muted-foreground">Loading...</div>
+                      </div>
+                    }>
                       {React.createElement(React.lazy(() => import('./pages/NewAgentPage')))}
                     </React.Suspense>
                   } />
