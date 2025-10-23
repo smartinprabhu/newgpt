@@ -133,16 +133,21 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       // Mark user as authenticated for new_app
       localStorage.setItem('isAuthenticated', 'true');
       
-      // Pass Frontend user credentials to new_app for auto-login
-      const frontendUsername = localStorage.getItem('frontend_username');
-      const frontendPassword = localStorage.getItem('frontend_password');
-      if (frontendUsername && frontendPassword) {
-        localStorage.setItem('zentere_username', frontendUsername);
-        localStorage.setItem('zentere_password', frontendPassword);
-      }
+      // Pass Frontend user credentials to new_app via URL parameters
+      // (localStorage is not shared between different ports)
+      const frontendUsername = localStorage.getItem('frontend_username') || '';
+      const frontendPassword = localStorage.getItem('frontend_password') || '';
+      
+      // Encode credentials and context to pass via URL
+      const authData = btoa(JSON.stringify({
+        username: frontendUsername,
+        password: frontendPassword,
+        agentContext: agentContext,
+        skipOnboarding: true
+      }));
 
-      // Navigate to new_app (port 3001)
-      window.location.href = 'http://localhost:3001';
+      // Navigate to new_app (port 3001) with auth data
+      window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
       
     } catch (err: any) {
       console.error('Error launching agent:', err);
