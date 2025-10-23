@@ -49,10 +49,46 @@ export default function Home() {
         } catch (error) {
           console.error('Failed to parse auth data:', error);
         }
+      } else {
+        // Check localStorage for auth data (iframe embedding scenario)
+        const storedAuthData = localStorage.getItem('agent_auth_data');
+        if (storedAuthData) {
+          try {
+            // Decode and parse stored auth data
+            const decoded = JSON.parse(atob(storedAuthData));
+            
+            // Store credentials in new_app's localStorage
+            if (decoded.username && decoded.password) {
+              localStorage.setItem('zentere_username', decoded.username);
+              localStorage.setItem('zentere_password', decoded.password);
+              localStorage.setItem('isAuthenticated', 'true');
+            }
+            
+            // Store agent context if provided
+            if (decoded.agentContext) {
+              localStorage.setItem('agentLaunchContext', JSON.stringify(decoded.agentContext));
+            }
+            
+            // Store skipOnboarding flag
+            if (decoded.skipOnboarding) {
+              localStorage.setItem('skipOnboarding', 'true');
+            }
+            
+            // Clear the stored auth data after use (security)
+            localStorage.removeItem('agent_auth_data');
+            
+            // Set authenticated and stop loading
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
+          } catch (error) {
+            console.error('Failed to decode stored auth data:', error);
+          }
+        }
       }
     }
     
-    // Normal authentication check (no auth param in URL)
+    // Normal authentication check (no auth param in URL or localStorage)
     const savedAuth = localStorage.getItem('isAuthenticated');
     const agentLaunchContext = localStorage.getItem('agentLaunchContext');
     
