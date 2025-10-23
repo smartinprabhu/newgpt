@@ -153,8 +153,12 @@ export default function AgentLauncher({ isOpen, onClose, agent, businessUnits }:
       console.log('📦 Encoded auth data length:', authData.length);
       console.log('🔗 Redirect URL:', `http://localhost:3001?auth=${encodeURIComponent(authData).substring(0, 50)}...`);
       
-      // Navigate to new_app (port 3001) with auth data
-      window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
+      // Navigate to new_app (port 3001) with auth data in new tab
+      window.open(`http://localhost:3001?auth=${encodeURIComponent(authData)}`, '_blank');
+      
+      // Reset form after successful launch
+      setPrompt('');
+      setIsLaunching(false);
       
     } catch (err: any) {
       console.error('Error launching agent:', err);
