@@ -57,6 +57,9 @@ export default function Login() {
     axios(config)
       .then((response) => {
         AuthService.setToken(response.data);
+        // Store username for new_app integration
+        localStorage.setItem('frontend_username', username);
+        localStorage.setItem('frontend_password', password);
         setLoginData({
           loading: false, data: response.data, err: null,
         });
