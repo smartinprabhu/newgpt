@@ -26,7 +26,7 @@ const NewAgentPage = () => {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [businessDataList, setBusinessDataList] = useState([]);
   const [businessUnitsWithLOBs, setBusinessUnitsWithLOBs] = useState([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   const WEBAPPAPIURL = '/api/v2/';
 
@@ -149,7 +149,49 @@ const NewAgentPage = () => {
 
   const handleCardClick = (agent: typeof agents[0]) => {
     if (agent.available) {
-      // Open the drawer for agent configuration
+      // Check if this is the Forecasting agent - redirect directly to port 3001
+      if (agent.title === "Forecasting") {
+        // Replicate password bypass logic from AgentLauncher.tsx
+        
+        // Build agentContext with available data
+        const agentContext = {
+          agentType: agent.title,
+          agentSubtype: agent.subtypes && agent.subtypes.length > 0 ? agent.subtypes[0] : '',
+          businessUnit: businessUnitsWithLOBs.length > 0 ? {
+            id: businessUnitsWithLOBs[0].id,
+            code: businessUnitsWithLOBs[0].code,
+            display_name: businessUnitsWithLOBs[0].display_name,
+            description: businessUnitsWithLOBs[0].description
+          } : null,
+          lineOfBusiness: null,
+          initialPrompt: '',
+          timestamp: new Date().toISOString(),
+          source: 'frontend_agent_launcher'
+        };
+
+        // Store context in localStorage
+        localStorage.setItem('agentLaunchContext', JSON.stringify(agentContext));
+        localStorage.setItem('skipOnboarding', 'true');
+        localStorage.setItem('isAuthenticated', 'true');
+
+        // Retrieve credentials from localStorage
+        const frontendUsername = localStorage.getItem('frontend_username') || '';
+        const frontendPassword = localStorage.getItem('frontend_password') || '';
+
+        // Build and encode authData
+        const authData = btoa(JSON.stringify({
+          username: frontendUsername,
+          password: frontendPassword,
+          agentContext: agentContext,
+          skipOnboarding: true
+        }));
+
+        // Redirect to port 3001 with auth parameter
+        window.location.href = `http://localhost:3001?auth=${encodeURIComponent(authData)}`;
+        return;
+      }
+
+      // For other agents, open the drawer for agent configuration
       if (isLoadingData) {
         return;
       }
