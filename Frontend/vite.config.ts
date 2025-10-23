@@ -24,6 +24,12 @@ export default defineConfig(({ mode }) => ({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v2/, '/api/v2'),
       },
+      '/agent-app': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/agent-app/, ''),
+      },
     },
   },
    build: {
