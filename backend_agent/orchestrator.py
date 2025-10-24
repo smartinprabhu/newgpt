@@ -473,6 +473,8 @@ class WorkflowOrchestrator:
         prompt: str,
         business_unit: str,
         line_of_business: str,
+        username: str,
+        password: str,
         suggested_agent_type: Optional[str] = None,
         session_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
@@ -485,6 +487,8 @@ class WorkflowOrchestrator:
             prompt: User's query/prompt
             business_unit: Business unit name/code
             line_of_business: Line of business name/code
+            username: User's Zentere username for authentication
+            password: User's Zentere password for authentication
             suggested_agent_type: Frontend suggested agent (optional)
             session_id: Session ID for context continuity (optional)
             context: Additional context (conversation history, preferences)
@@ -513,11 +517,12 @@ class WorkflowOrchestrator:
                 )
         
         try:
-            logger.info(f"Starting workflow execution - Session: {session_id}, Prompt: {prompt[:100]}...")
+            logger.info(f"Starting workflow execution - Session: {session_id}, User: {username}, Prompt: {prompt[:100]}...")
             
             logger.info("=" * 80)
-            logger.info("🎯 WORKFLOW ORCHESTRATOR - DATA RETRIEVAL")
+            logger.info("🎯 WORKFLOW ORCHESTRATOR - USER-SPECIFIC DATA RETRIEVAL")
             logger.info("=" * 80)
+            logger.info(f"👤 User: {username}")
             logger.info(f"📝 User Prompt: {prompt[:100]}...")
             logger.info(f"🏢 Business Unit: '{business_unit}'")
             logger.info(f"📊 Line of Business: '{line_of_business}'")
@@ -533,36 +538,112 @@ class WorkflowOrchestrator:
             # Enrich context from conversation history
             conversation_context = await self.enrich_context_from_history(session_id, prompt)
             
-            # Retrieve LOB data from Redis
-            logger.info("🔍 Attempting to retrieve LOB data from Redis...")
-            logger.info(f"   Looking for: lob:{business_unit}:{line_of_business}:data")
+            # Build user-specific cache key
+            cache_key = f"user:{username}:bu:{business_unit}:lob:{line_of_business}"
+            logger.info("🔍 Checking user-specific cache...")
+            logger.info(f"   Cache key: {cache_key}")
             
-            lob_dataset = await self.redis_manager.get_lob_data(
-                business_unit=business_unit,
-                line_of_business=line_of_business
-            )
+            # Check if user-specific data exists in cache
+            lob_dataset = await self.redis_manager.get_lob_data_by_key(cache_key)
             
             if lob_dataset:
+                # Cache hit - data found
                 row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
                 columns = lob_dataset.get("columns", [])
                 logger.info("=" * 80)
-                logger.info(f"✅ LOB DATA FOUND AND LOADED!")
+                logger.info(f"✅ CACHE HIT - User-specific data found!")
+                logger.info(f"   User: {username}")
                 logger.info(f"   Business Unit: {business_unit}")
                 logger.info(f"   Line of Business: {line_of_business}")
                 logger.info(f"   Rows: {row_count}")
                 logger.info(f"   Columns: {columns}")
-                logger.info(f"   Source: {lob_dataset.get('source', 'unknown')}")
-                if row_count > 0:
-                    logger.info(f"   Sample (first row): {lob_dataset.get('rows', [])[0] if lob_dataset.get('rows') else 'N/A'}")
+                logger.info("   Using cached data (no API call needed)")
                 logger.info("=" * 80)
             else:
-                logger.warning("=" * 80)
-                logger.warning(f"❌ NO LOB DATA FOUND IN REDIS!")
-                logger.warning(f"   Searched for: {business_unit}/{line_of_business}")
-                logger.warning(f"   Redis key pattern: lob:{business_unit}:{line_of_business}:data")
-                logger.warning("   Agents will receive NO DATASET in their prompt!")
-                logger.warning("=" * 80)
+                # Cache miss - fetch data using user credentials
+                logger.info("=" * 80)
+                logger.info(f"❌ CACHE MISS - No cached data for user {username}")
+                logger.info(f"   Fetching fresh data from Zentere API...")
+                logger.info("=" * 80)
+                
+                await progress_callback("Fetching data from Zentere API...", "Data Fetch", 15)
+                
+                try:
+                    # Import zentere_client for data fetching
+                    from zentere_client import fetch_and_organize_zentere_data
+                    
+                    # Fetch data using user's credentials
+                    logger.info(f"📡 Authenticating as {username}...")
+                    organized_data = await fetch_and_organize_zentere_data(
+                        username=username,
+                        password=password
+                    )
+                    
+                    if not organized_data:
+                        logger.error(f"❌ Failed to fetch data for user {username}")
+                        raise Exception(f"Unable to fetch data from Zentere API for user {username}")
+                    
+                    logger.info(f"✅ Data fetched successfully for user {username}")
+                    
+                    # Store all BU/LOB combinations in Redis with user-specific keys
+                    logger.info("💾 Storing user-specific data in Redis cache...")
+                    stored_count = 0
+                    
+                    for bu_code, bu_data in organized_data.items():
+                        for lob_code, lob_data in bu_data.get("lobs", {}).items():
+                            # Create user-specific key for each BU/LOB combination
+                            user_cache_key = f"user:{username}:bu:{bu_data['name']}:lob:{lob_data['name']}"
+                            
+                            # Prepare data in the format expected by agents
+                            dataset = {
+                                "rows": lob_data.get("data", []),
+                                "columns": ["Date", "Value", "Orders", "Parameter"],
+                                "source": "zentere_api",
+                                "business_unit": bu_data["name"],
+                                "line_of_business": lob_data["name"],
+                                "user": username,
+                                "cached_at": datetime.utcnow().isoformat()
+                            }
+                            
+                            # Store in Redis with 1-hour TTL (3600 seconds)
+                            success = await self.redis_manager.set_with_ttl(
+                                key=user_cache_key,
+                                value=dataset,
+                                ttl_seconds=3600  # 1 hour
+                            )
+                            
+                            if success:
+                                stored_count += 1
+                                logger.debug(f"   ✓ Cached: {user_cache_key}")
+                    
+                    logger.info(f"✅ Stored {stored_count} BU/LOB combinations in cache (TTL: 1 hour)")
+                    
+                    # Now retrieve the specific requested BU/LOB from cache
+                    lob_dataset = await self.redis_manager.get_lob_data_by_key(cache_key)
+                    
+                    if lob_dataset:
+                        row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
+                        logger.info("=" * 80)
+                        logger.info(f"✅ Retrieved requested BU/LOB from fresh cache")
+                        logger.info(f"   Rows: {row_count}")
+                        logger.info("=" * 80)
+                    else:
+                        logger.warning("=" * 80)
+                        logger.warning(f"⚠️  Requested BU/LOB not found in user's accessible data")
+                        logger.warning(f"   User {username} may not have access to {business_unit}/{line_of_business}")
+                        logger.warning("=" * 80)
+                        raise Exception(f"Business unit or line of business not found for user {username}")
+                        
+                except Exception as fetch_error:
+                    logger.error(f"❌ Data fetch failed: {str(fetch_error)}", exc_info=True)
+                    # Check if it's an authentication error
+                    if "Authentication failed" in str(fetch_error) or "401" in str(fetch_error):
+                        raise Exception(f"Authentication failed for user {username}")
+                    else:
+                        raise Exception(f"Unable to fetch data from Zentere API: {str(fetch_error)}")
             
+            await progress_callback("Data loaded, starting agent execution...", agent_type, 20)
+
             if lob_dataset:
                 row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
                 logger.info(f"LOB data loaded for {business_unit}/{line_of_business}: {row_count} rows")
