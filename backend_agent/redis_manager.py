@@ -1,11 +1,12 @@
 """
 Redis Context Manager
 Stores and retrieves BU/LOB context, conversation history, and workflow state
+Also manages task state for asynchronous execution and conversation embeddings
 """
 import redis.asyncio as redis
 import json
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import logging
 import os
@@ -28,6 +29,12 @@ class RedisContextManager:
 
         # TTL for session context (24 hours)
         self.context_ttl = int(os.getenv('CONTEXT_TTL_SECONDS', 86400))
+        
+        # TTL for tasks (1 hour)
+        self.task_ttl = int(os.getenv('TASK_TTL_SECONDS', 3600))
+        
+        # TTL for conversation embeddings (30 days)
+        self.conversation_ttl = int(os.getenv('CONVERSATION_TTL_SECONDS', 2592000))
 
         self.client: Optional[redis.Redis] = None
         logger.info(f"RedisContextManager initialized - Host: {self.redis_host}:{self.redis_port}")
@@ -282,6 +289,268 @@ class RedisContextManager:
         if self.client:
             await self.client.close()
             logger.info("Redis connection closed")
+
+    # ========== Task Management Functions (for async execution) ==========
+
+    async def create_task(self, task_id: str, request_data: Dict[str, Any]) -> bool:
+        """
+        Create new task entry in Redis
+
+        Args:
+            task_id: Unique task identifier
+            request_data: Original request data
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+
+            task_data = {
+                "task_id": task_id,
+                "status": "pending",
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+                "request": json.dumps(request_data),
+                "progress": json.dumps({
+                    "current_step": "Task created",
+                    "current_agent": None,
+                    "percentage": 0,
+                    "workflow_steps": []
+                }),
+                "result": None,
+                "error": None
+            }
+
+            key = f"task:{task_id}"
+            await client.hset(key, mapping=task_data)
+            await client.expire(key, self.task_ttl)
+
+            logger.info(f"Task created: {task_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to create task: {str(e)}")
+            return False
+
+    async def update_task_progress(
+        self,
+        task_id: str,
+        progress_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Update task progress in Redis
+
+        Args:
+            task_id: Task identifier
+            progress_data: Progress information (status, current_step, current_agent, percentage, workflow_steps)
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            key = f"task:{task_id}"
+
+            # Check if task exists
+            exists = await client.exists(key)
+            if not exists:
+                logger.warning(f"Cannot update progress - task not found: {task_id}")
+                return False
+
+            # Prepare updates
+            updates = {
+                "updated_at": datetime.utcnow().isoformat()
+            }
+
+            if "status" in progress_data:
+                updates["status"] = progress_data["status"]
+
+            if any(k in progress_data for k in ["current_step", "current_agent", "percentage", "workflow_steps"]):
+                # Get existing progress
+                existing_progress_json = await client.hget(key, "progress")
+                existing_progress = json.loads(existing_progress_json) if existing_progress_json else {}
+
+                # Merge with new progress
+                existing_progress.update({
+                    k: v for k, v in progress_data.items()
+                    if k in ["current_step", "current_agent", "percentage", "workflow_steps"]
+                })
+
+                updates["progress"] = json.dumps(existing_progress)
+
+            # Apply updates
+            await client.hset(key, mapping=updates)
+
+            logger.info(f"Task progress updated: {task_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to update task progress: {str(e)}")
+            return False
+
+    async def complete_task(self, task_id: str, result: Dict[str, Any]) -> bool:
+        """
+        Mark task as completed and store result
+
+        Args:
+            task_id: Task identifier
+            result: Task result data
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            key = f"task:{task_id}"
+
+            updates = {
+                "status": "completed",
+                "updated_at": datetime.utcnow().isoformat(),
+                "result": json.dumps(result)
+            }
+
+            await client.hset(key, mapping=updates)
+
+            logger.info(f"Task completed: {task_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to complete task: {str(e)}")
+            return False
+
+    async def fail_task(self, task_id: str, error: Dict[str, Any]) -> bool:
+        """
+        Mark task as failed and store error details
+
+        Args:
+            task_id: Task identifier
+            error: Error information (message, code)
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            key = f"task:{task_id}"
+
+            updates = {
+                "status": "error",
+                "updated_at": datetime.utcnow().isoformat(),
+                "error": json.dumps(error)
+            }
+
+            await client.hset(key, mapping=updates)
+
+            logger.error(f"Task failed: {task_id} - {error.get('message', 'Unknown error')}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to mark task as failed: {str(e)}")
+            return False
+
+    async def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve full task data from Redis
+
+        Args:
+            task_id: Task identifier
+
+        Returns:
+            Task dictionary or None if not found
+        """
+        try:
+            client = await self.get_client()
+            key = f"task:{task_id}"
+
+            task_data = await client.hgetall(key)
+            if not task_data:
+                return None
+
+            # Deserialize JSON fields
+            return {
+                "task_id": task_data.get("task_id"),
+                "status": task_data.get("status"),
+                "created_at": task_data.get("created_at"),
+                "updated_at": task_data.get("updated_at"),
+                "request": json.loads(task_data.get("request", "{}")),
+                "progress": json.loads(task_data.get("progress", "{}")),
+                "result": json.loads(task_data.get("result")) if task_data.get("result") else None,
+                "error": json.loads(task_data.get("error")) if task_data.get("error") else None
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get task status: {str(e)}")
+            return None
+
+    # ========== Conversation Embedding Storage ==========
+
+    async def store_conversation_embedding(
+        self,
+        session_id: str,
+        conversation_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Store conversation with embedding in Redis
+        Used by vector search for similarity matching
+
+        Args:
+            session_id: Session identifier
+            conversation_data: Conversation data including embedding
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+
+            timestamp = int(datetime.utcnow().timestamp())
+            conv_uuid = uuid.uuid4().hex[:8]
+            key = f"conv:{session_id}:{timestamp}:{conv_uuid}"
+
+            # Store conversation data
+            await client.hset(key, mapping=conversation_data)
+            await client.expire(key, self.conversation_ttl)
+
+            logger.info(f"Stored conversation embedding: {key}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to store conversation embedding: {str(e)}")
+            return False
+
+    async def get_session_conversations(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve all conversations for a session
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            List of conversation dictionaries
+        """
+        try:
+            client = await self.get_client()
+            pattern = f"conv:{session_id}:*"
+
+            conversations = []
+            count = 0
+            async for key in client.scan_iter(match=pattern, count=100):
+                conv_data = await client.hgetall(key)
+                if conv_data:
+                    conversations.append(conv_data)
+                    count += 1
+
+                # Limit to 100 most recent conversations
+                if count >= 100:
+                    break
+
+            logger.info(f"Retrieved {len(conversations)} conversations for session: {session_id}")
+            return conversations
+
+        except Exception as e:
+            logger.error(f"Failed to get session conversations: {str(e)}")
+            return []
 
 
 # Utility function to generate session IDs
