@@ -556,6 +556,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Store LOB data in Redis when user selects LOB
+  React.useEffect(() => {
+    const storeLOBDataInRedis = async () => {
+      // Only proceed if both BU and LOB are selected
+      if (!state.selectedBu || !state.selectedLob) {
+        return;
+      }
+
+      // Only store if LOB has data
+      if (!state.selectedLob.hasData) {
+        console.log(`LOB ${state.selectedLob.name} has no data, skipping Redis storage`);
+        return;
+      }
+
+      try {
+        console.log(`📦 Preparing LOB data for ${state.selectedBu.code}/${state.selectedLob.code}...`);
+
+        const pythonClient = getPythonAgentClient();
+
+        // Prepare LOB data structure
+        // Note: The actual data structure depends on what's available in the LOB object
+        // For now, we'll send what we have and let the backend handle it
+        const lobData = {
+          rows: (state.selectedLob as any).data?.rows || [],
+          columns: (state.selectedLob as any).data?.columns || [],
+          source: 'zentere-api',
+          recordCount: state.selectedLob.recordCount || 0,
+          uploadedAt: state.selectedLob.dataUploaded?.toISOString() || new Date().toISOString(),
+        };
+
+        // Call backend to store LOB data
+        const result = await pythonClient.storeLOBData(
+          state.selectedBu.code,
+          state.selectedLob.code,
+          lobData,
+          {
+            source: 'zentere-api',
+            timestamp: new Date().toISOString(),
+            businessUnitName: state.selectedBu.name,
+            lobName: state.selectedLob.name,
+          }
+        );
+
+        if (result.success) {
+          console.log(`✅ LOB data prepared for ${result.lob_id}`);
+        }
+      } catch (error) {
+        // Non-blocking error - just log it
+        // Chat should still work even if LOB data storage fails
+        console.warn('⚠️ Could not prepare LOB data for backend:', error);
+        console.warn('Chat will continue with limited context. Agents may not have access to full LOB dataset.');
+      }
+    };
+
+    // Debounce the storage call to prevent rapid switches
+    const timeoutId = setTimeout(() => {
+      storeLOBDataInRedis();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [state.selectedBu, state.selectedLob]);
+
   return (
     <AppContext.Provider value={{ state, dispatch, refreshData }}>
       {children}
