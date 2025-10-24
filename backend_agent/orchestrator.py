@@ -155,6 +155,21 @@ class WorkflowOrchestrator:
     ) -> str:
         """Create context-aware prompt for agents with FULL LOB data"""
         
+        logger.info("=" * 80)
+        logger.info("📝 CREATING CONTEXT PROMPT FOR AGENT")
+        logger.info("=" * 80)
+        logger.info(f"🏢 Business Unit: {business_unit}")
+        logger.info(f"📊 Line of Business: {line_of_business}")
+        logger.info(f"📋 LOB Dataset Provided: {'YES' if lob_dataset else 'NO'}")
+        
+        if lob_dataset:
+            rows = lob_dataset.get("rows", [])
+            columns = lob_dataset.get("columns", [])
+            row_count = len(rows) if isinstance(rows, list) else 0
+            logger.info(f"   Dataset Rows: {row_count}")
+            logger.info(f"   Dataset Columns: {columns}")
+            logger.info(f"   First row sample: {rows[0] if row_count > 0 else 'N/A'}")
+        
         context_parts = [
             "**Business Context:**",
             f"- Business Unit: {business_unit}",
@@ -169,6 +184,8 @@ class WorkflowOrchestrator:
             columns = lob_dataset.get("columns", [])
             row_count = len(rows) if isinstance(rows, list) else 0
             column_count = len(columns) if isinstance(columns, list) else 0
+            
+            logger.info(f"✅ Including LOB dataset in prompt: {row_count} rows")
             
             context_parts.extend([
                 "=" * 80,
@@ -203,6 +220,7 @@ class WorkflowOrchestrator:
             # Include full dataset as JSON (limit to 500 rows to stay within token limits)
             max_rows = min(500, row_count)
             if max_rows > 0:
+                logger.info(f"   Adding JSON dataset to prompt: {max_rows} rows")
                 context_parts.extend([
                     f"**FULL DATASET (JSON format - {max_rows} rows):**",
                     "```json",
@@ -214,6 +232,8 @@ class WorkflowOrchestrator:
                 if row_count > max_rows:
                     context_parts.append(f"Note: Showing first {max_rows} of {row_count} total records for token efficiency.")
                     context_parts.append("")
+        else:
+            logger.warning("❌ NO LOB DATASET - prompt will not include data!")
         
         context_parts.extend([
             "=" * 80,
@@ -267,13 +287,19 @@ class WorkflowOrchestrator:
                 "",
                 "Now perform the analysis using the data provided above."
             ])
+            logger.info("✅ Prompt includes data and analysis instructions")
         else:
             context_parts.extend([
                 "⚠ NO DATA CURRENTLY AVAILABLE",
                 "Explain what data you need for this analysis.",
             ])
+            logger.warning("⚠️ Prompt indicates NO DATA AVAILABLE")
         
-        return "\n".join(context_parts)
+        final_prompt = "\n".join(context_parts)
+        logger.info(f"📏 Final prompt length: {len(final_prompt)} characters")
+        logger.info("=" * 80)
+        
+        return final_prompt
 
     async def _execute_agent_node(
         self,
