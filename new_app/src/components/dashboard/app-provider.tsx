@@ -14,6 +14,7 @@ type AppState = {
   workflow: WorkflowStep[];
   isProcessing: boolean;
   thinkingSteps: string[];
+  sessionId: string | null;
   agentMonitor: AgentMonitorProps;
   dataPanelOpen: boolean;
   dataPanelMode: 'chart' | 'table' | 'menu';
@@ -111,6 +112,7 @@ type Action =
   | { type: 'SET_THINKING_STEPS'; payload: string[] }
   | { type: 'ADD_THINKING_STEP'; payload: string }
   | { type: 'CLEAR_THINKING_STEPS' }
+  | { type: 'SET_SESSION_ID'; payload: string }
   | { type: 'UPDATE_WORKFLOW_STEP'; payload: Partial<WorkflowStep> & { id: string } }
   | { type: 'SET_WORKFLOW'; payload: WorkflowStep[] }
   | { type: 'RESET_WORKFLOW' }
@@ -170,6 +172,7 @@ const initialState: AppState = {
   workflow: [],
   isProcessing: false,
   thinkingSteps: [],
+  sessionId: null,
   agentMonitor: {
     isOpen: false,
   },
@@ -245,6 +248,8 @@ function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_API_KEY':
       return { ...state, apiKey: action.payload };
+    case 'SET_SESSION_ID':
+      return { ...state, sessionId: action.payload };
     case 'SET_SELECTED_BU':
       // Don't clear workflow when selecting BU - let it continue if active
       return { 
@@ -868,6 +873,25 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [hasLoadedData, setHasLoadedData] = React.useState(false);
+
+  // Session ID management - load from localStorage or generate new
+  useEffect(() => {
+    const savedSessionId = localStorage.getItem('chat_session_id');
+    if (savedSessionId) {
+      dispatch({ type: 'SET_SESSION_ID', payload: savedSessionId });
+    } else {
+      const newSessionId = crypto.randomUUID();
+      localStorage.setItem('chat_session_id', newSessionId);
+      dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
+    }
+  }, []);
+
+  // Update localStorage when session ID changes
+  useEffect(() => {
+    if (state.sessionId) {
+      localStorage.setItem('chat_session_id', state.sessionId);
+    }
+  }, [state.sessionId]);
 
   // Check for agent launch context from Frontend on mount
   useEffect(() => {
