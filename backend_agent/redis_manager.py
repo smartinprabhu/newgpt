@@ -317,9 +317,9 @@ class RedisContextManager:
                     "current_agent": None,
                     "percentage": 0,
                     "workflow_steps": []
-                }),
-                "result": None,
-                "error": None
+                })
+                # DO NOT include 'result' and 'error' fields yet - they will be added later
+                # Redis hset doesn't accept None values
             }
 
             key = f"task:{task_id}"
