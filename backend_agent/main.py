@@ -290,11 +290,17 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
         if not line_of_business or line_of_business == "":
             line_of_business = "Default Line of Business"
         
-        logger.info(f"📥 Received request:")
-        logger.info(f"   Prompt: {request.prompt[:100]}...")
-        logger.info(f"   Business Unit: {business_unit}")
-        logger.info(f"   Line of Business: {line_of_business}")
-        logger.info(f"   Session ID: {request.session_id or 'New session'}")
+        logger.info("=" * 80)
+        logger.info("📥 NEW AGENT EXECUTION REQUEST")
+        logger.info("=" * 80)
+        logger.info(f"📝 Prompt: {request.prompt[:100]}...")
+        logger.info(f"🏢 Business Unit (raw): '{request.business_unit}'")
+        logger.info(f"🏢 Business Unit (processed): '{business_unit}'")
+        logger.info(f"📊 Line of Business (raw): '{request.line_of_business}'")
+        logger.info(f"📊 Line of Business (processed): '{line_of_business}'")
+        logger.info(f"🔑 Session ID: {request.session_id or 'New session'}")
+        logger.info(f"🤖 Suggested Agent Type: {request.suggested_agent_type or 'None'}")
+        logger.info("=" * 80)
         
         # Generate unique task ID
         task_id = f"task_{uuid.uuid4().hex[:16]}"
