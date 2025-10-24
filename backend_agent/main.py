@@ -49,50 +49,20 @@ redis_manager = RedisContextManager()
 orchestrator = WorkflowOrchestrator(redis_manager)
 
 
-# Startup event: Fetch and store Zentere data
-@app.on_event("startup")
-async def startup_event():
-    """
-    Fetch all BU/LOB data from Zentere API on startup
-    Store everything in Redis for agent access
-    """
-    logger.info("=" * 80)
-    logger.info("🚀 BACKEND STARTUP: Fetching Zentere Data")
-    logger.info("=" * 80)
-    
-    try:
-        from zentere_client import fetch_and_organize_zentere_data
-        
-        # Fetch all data from Zentere API
-        logger.info("📡 Connecting to Zentere API (app-api-dev.zentere.com)...")
-        organized_data = await fetch_and_organize_zentere_data(
-            username="martin@demo.com",
-            password="demo"
-        )
-        
-        if not organized_data:
-            logger.warning("⚠️ No data fetched from Zentere API - agents will have limited capabilities")
-            return
-        
-        # Store in Redis
-        logger.info("💾 Storing all BU/LOB data in Redis...")
-        success = await redis_manager.store_all_zentere_data(organized_data)
-        
-        if success:
-            logger.info("✅ Zentere data successfully loaded and ready for agents!")
-            
-            # Log summary
-            index = await redis_manager.get_zentere_index()
-            if index:
-                logger.info(f"📊 Available: {index['total_bus']} BUs, {index['total_lobs']} LOBs, {index['total_records']} records")
-        else:
-            logger.error("❌ Failed to store Zentere data in Redis")
-            
-    except Exception as e:
-        logger.error(f"❌ Startup data fetch failed: {str(e)}", exc_info=True)
-        logger.warning("⚠️ Backend will start but agents may not have access to LOB data")
-    
-    logger.info("=" * 80)
+# Startup event: Fetch and store Zentere data - DISABLED (now using per-user credentials)
+# @app.on_event("startup")
+# async def startup_event():
+#     """
+#     Fetch all BU/LOB data from Zentere API on startup
+#     Store everything in Redis for agent access
+#     
+#     NOTE: This is now DISABLED - data is fetched per-user with dynamic credentials
+#     """
+#     logger.info("=" * 80)
+#     logger.info("🚀 BACKEND STARTUP: Per-user credential mode enabled")
+#     logger.info("=" * 80)
+#     logger.info("ℹ️  Data will be fetched dynamically using user credentials from requests")
+#     logger.info("=" * 80)
 
 
 # Request/Response Models
@@ -116,6 +86,8 @@ class ConversationMessage(BaseModel):
 
 
 class AgentExecutionRequest(BaseModel):
+    username: str = Field(..., description="User's Zentere username for authentication")
+    password: str = Field(..., description="User's Zentere password for authentication")
     prompt: str = Field(..., description="User's query/prompt (required, max 2000 chars)")
     business_unit: str = Field(..., description="Business unit name or code")
     line_of_business: str = Field(..., description="Line of business name or code")
@@ -209,7 +181,7 @@ async def execute_workflow_background(
             }
         )
         
-        # Execute workflow through orchestrator
+        # Execute workflow through orchestrator with user credentials
         result = await orchestrator.execute_workflow(
             prompt=request.prompt,
             business_unit=business_unit,
@@ -217,6 +189,8 @@ async def execute_workflow_background(
             suggested_agent_type=request.suggested_agent_type,
             session_id=request.session_id,
             context=request.context,
+            username=request.username,
+            password=request.password,
             task_id=task_id  # Pass task_id for progress updates
         )
         
@@ -267,12 +241,19 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
     Create agent execution task (returns immediately with task_id)
     
     Flow:
-    1. Validate request
+    1. Validate request (including credentials)
     2. Create task in Redis
     3. Start background execution
     4. Return task_id for polling
     """
     try:
+        # Validate credentials
+        if not request.username or request.username.strip() == "":
+            raise HTTPException(status_code=400, detail="Username is required")
+        
+        if not request.password or request.password.strip() == "":
+            raise HTTPException(status_code=400, detail="Password is required")
+        
         # Validate prompt length
         if not request.prompt or len(request.prompt) == 0:
             raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -293,6 +274,7 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
         logger.info("=" * 80)
         logger.info("📥 NEW AGENT EXECUTION REQUEST")
         logger.info("=" * 80)
+        logger.info(f"👤 User: {request.username}")
         logger.info(f"📝 Prompt: {request.prompt[:100]}...")
         logger.info(f"🏢 Business Unit (raw): '{request.business_unit}'")
         logger.info(f"🏢 Business Unit (processed): '{business_unit}'")
@@ -316,7 +298,8 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
                 "line_of_business": line_of_business,
                 "suggested_agent_type": request.suggested_agent_type,
                 "session_id": request.session_id,
-                "context": request.context
+                "context": request.context,
+                "username": request.username  # Store username (not password) for tracking
             }
         )
         
