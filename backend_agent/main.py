@@ -1,18 +1,22 @@
 """
 FastAPI Backend for AI Agent System
 Receives requests from Frontend, processes through Langraph workflow orchestrator
+Supports asynchronous task execution with long polling for progress updates
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 import logging
 import sys
+import uuid
+import asyncio
 
 # Import our custom modules
 from redis_manager import RedisContextManager
 from orchestrator import WorkflowOrchestrator
+from vector_search import get_vector_search
 
 # Configure logging
 logging.basicConfig(
@@ -60,12 +64,47 @@ class LOBModel(BaseModel):
     description: Optional[str] = None
 
 
+class ConversationMessage(BaseModel):
+    role: str
+    content: str
+
+
 class AgentExecutionRequest(BaseModel):
-    agent_type: str = Field(..., description="Type of agent (e.g., 'Forecasting', 'Short Term Forecasting')")
-    business_unit: BusinessUnitModel = Field(..., description="Selected business unit")
-    line_of_business: Optional[LOBModel] = Field(None, description="Optional selected LOB")
-    prompt: str = Field(..., description="User's initial prompt/query")
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    prompt: str = Field(..., description="User's query/prompt (required, max 2000 chars)")
+    business_unit: str = Field(..., description="Business unit name or code")
+    line_of_business: str = Field(..., description="Line of business name or code")
+    suggested_agent_type: Optional[str] = Field(None, description="Frontend suggested agent type (optional)")
+    session_id: Optional[str] = Field(None, description="Session ID for context continuity (optional)")
+    context: Optional[Dict[str, Any]] = Field(None, description="Additional context (conversation history, preferences)")
+
+
+class AgentTaskResponse(BaseModel):
+    success: bool
+    task_id: str
+    estimated_duration: str = "30-60s"
+    message: str = "Task created successfully"
+
+
+class WorkflowStep(BaseModel):
+    step_number: int
+    agent_name: str
+    agent_type: str
+    status: str
+    start_time: str
+    end_time: str
+    duration_ms: int
+    output_summary: str
+
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str  # "pending" | "running" | "completed" | "error"
+    progress: str
+    current_agent: Optional[str] = None
+    percentage: int
+    result: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    error_code: Optional[str] = None
 
 
 class AgentExecutionResponse(BaseModel):
@@ -76,6 +115,58 @@ class AgentExecutionResponse(BaseModel):
     workflow_steps: Optional[list] = None
     execution_time: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+# Background task execution function
+async def execute_workflow_background(
+    task_id: str,
+    request: AgentExecutionRequest,
+    redis_manager: RedisContextManager,
+    orchestrator: WorkflowOrchestrator
+):
+    """
+    Execute workflow in background and update task status
+    """
+    try:
+        logger.info(f"Background task started: {task_id}")
+        
+        # Update task status to running
+        await redis_manager.update_task_progress(
+            task_id,
+            {
+                "status": "running",
+                "current_step": "Analyzing query...",
+                "percentage": 10
+            }
+        )
+        
+        # Execute workflow through orchestrator
+        result = await orchestrator.execute_workflow(
+            prompt=request.prompt,
+            business_unit=request.business_unit,
+            line_of_business=request.line_of_business,
+            suggested_agent_type=request.suggested_agent_type,
+            session_id=request.session_id,
+            context=request.context,
+            task_id=task_id  # Pass task_id for progress updates
+        )
+        
+        # Mark task as completed
+        await redis_manager.complete_task(task_id, result)
+        
+        logger.info(f"Background task completed: {task_id}")
+        
+    except Exception as e:
+        logger.error(f"Background task failed: {task_id} - {str(e)}", exc_info=True)
+        
+        # Mark task as failed
+        await redis_manager.fail_task(
+            task_id,
+            {
+                "message": f"Workflow execution failed: {str(e)}",
+                "code": "EXECUTION_ERROR"
+            }
+        )
 
 
 # API Endpoints
@@ -101,53 +192,133 @@ async def health_check():
     }
 
 
-@app.post("/api/agent/execute", response_model=AgentExecutionResponse)
-async def execute_agent(request: AgentExecutionRequest):
+@app.post("/api/agent/execute", response_model=AgentTaskResponse)
+async def execute_agent(request: AgentExecutionRequest, background_tasks: BackgroundTasks):
     """
-    Main endpoint to execute agent workflow
-
+    Create agent execution task (returns immediately with task_id)
+    
     Flow:
-    1. Receive request with BU/LOB context and prompt
-    2. Store context in Redis
-    3. Pass to orchestrator for workflow execution
-    4. Return response
+    1. Validate request
+    2. Create task in Redis
+    3. Start background execution
+    4. Return task_id for polling
     """
     try:
-        logger.info(f"Received request for agent: {request.agent_type}")
-        logger.info(f"BU: {request.business_unit.display_name}, LOB: {request.line_of_business.name if request.line_of_business else 'None'}")
-        logger.info(f"Prompt: {request.prompt[:100]}...")
-
-        # Execute workflow through orchestrator
-        result = await orchestrator.execute_workflow(
-            agent_type=request.agent_type,
-            business_unit=request.business_unit.dict(),
-            line_of_business=request.line_of_business.dict() if request.line_of_business else None,
-            prompt=request.prompt
+        # Validate prompt length
+        if not request.prompt or len(request.prompt) == 0:
+            raise HTTPException(status_code=400, detail="Query cannot be empty")
+        
+        if len(request.prompt) > 2000:
+            raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
+        
+        # Validate required fields
+        if not request.business_unit:
+            raise HTTPException(status_code=400, detail="Business unit is required")
+        
+        if not request.line_of_business:
+            raise HTTPException(status_code=400, detail="Line of business is required")
+        
+        # Generate unique task ID
+        task_id = f"task_{uuid.uuid4().hex[:16]}"
+        
+        logger.info(f"Creating task: {task_id} for prompt: {request.prompt[:100]}...")
+        
+        # Create task in Redis
+        task_created = await redis_manager.create_task(
+            task_id,
+            {
+                "prompt": request.prompt,
+                "business_unit": request.business_unit,
+                "line_of_business": request.line_of_business,
+                "suggested_agent_type": request.suggested_agent_type,
+                "session_id": request.session_id,
+                "context": request.context
+            }
         )
-
-        logger.info(f"Workflow execution completed. Session ID: {result['session_id']}")
-
-        return AgentExecutionResponse(
+        
+        if not task_created:
+            raise HTTPException(status_code=503, detail="System overloaded - unable to create task")
+        
+        # Schedule background execution
+        background_tasks.add_task(
+            execute_workflow_background,
+            task_id,
+            request,
+            redis_manager,
+            orchestrator
+        )
+        
+        logger.info(f"Task created and scheduled: {task_id}")
+        
+        return AgentTaskResponse(
             success=True,
-            response=result['response'],
-            session_id=result['session_id'],
-            agent_type=request.agent_type,
-            workflow_steps=result.get('workflow_steps'),
-            execution_time=result.get('execution_time'),
-            metadata=result.get('metadata')
+            task_id=task_id,
+            estimated_duration="30-60s",
+            message="Task created successfully"
         )
-
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error executing agent workflow: {str(e)}", exc_info=True)
+        logger.error(f"Error creating task: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to execute agent workflow: {str(e)}"
+            detail=f"Failed to create task: {str(e)}"
         )
 
 
-@app.get("/api/session/{session_id}")
+@app.get("/api/agent/status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str):
+    """
+    Get current status of a task (for long polling)
+    
+    Returns:
+    - Status: pending, running, completed, error
+    - Progress information
+    - Result (if completed)
+    - Error details (if failed)
+    """
+    try:
+        # Retrieve task from Redis
+        task_data = await redis_manager.get_task_status(task_id)
+        
+        if not task_data:
+            raise HTTPException(status_code=404, detail="Task not found or expired")
+        
+        status = task_data.get("status", "pending")
+        progress_data = task_data.get("progress", {})
+        
+        # Build response based on status
+        response = TaskStatusResponse(
+            task_id=task_id,
+            status=status,
+            progress=progress_data.get("current_step", "Processing..."),
+            current_agent=progress_data.get("current_agent"),
+            percentage=progress_data.get("percentage", 0)
+        )
+        
+        # Include result if completed
+        if status == "completed":
+            response.result = task_data.get("result")
+        
+        # Include error if failed
+        if status == "error":
+            error_data = task_data.get("error", {})
+            response.error_message = error_data.get("message", "Unknown error")
+            response.error_code = error_data.get("code", "UNKNOWN")
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving task status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/agent/context/{session_id}")
 async def get_session_context(session_id: str):
-    """Retrieve stored session context from Redis"""
+    """Retrieve stored session context from Redis (for debugging/admin)"""
     try:
         context = await redis_manager.get_context(session_id)
         if not context:
