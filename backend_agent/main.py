@@ -128,7 +128,16 @@ async def execute_workflow_background(
     Execute workflow in background and update task status
     """
     try:
-        logger.info(f"Background task started: {task_id}")
+        logger.info(f"🚀 Background task started: {task_id}")
+        
+        # Sanitize and validate BU/LOB
+        business_unit = request.business_unit.strip() if request.business_unit else "Default Business Unit"
+        line_of_business = request.line_of_business.strip() if request.line_of_business else "Default Line of Business"
+        
+        if not business_unit or business_unit == "":
+            business_unit = "Default Business Unit"
+        if not line_of_business or line_of_business == "":
+            line_of_business = "Default Line of Business"
         
         # Update task status to running
         await redis_manager.update_task_progress(
@@ -143,8 +152,8 @@ async def execute_workflow_background(
         # Execute workflow through orchestrator
         result = await orchestrator.execute_workflow(
             prompt=request.prompt,
-            business_unit=request.business_unit,
-            line_of_business=request.line_of_business,
+            business_unit=business_unit,
+            line_of_business=line_of_business,
             suggested_agent_type=request.suggested_agent_type,
             session_id=request.session_id,
             context=request.context,
@@ -154,7 +163,7 @@ async def execute_workflow_background(
         # Mark task as completed
         await redis_manager.complete_task(task_id, result)
         
-        logger.info(f"Background task completed: {task_id}")
+        logger.info(f"✅ Background task completed: {task_id}")
         
     except Exception as e:
         logger.error(f"Background task failed: {task_id} - {str(e)}", exc_info=True)
