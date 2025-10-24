@@ -870,6 +870,70 @@ class RedisContextManager:
             logger.error(f"Failed to get Zentere index: {str(e)}")
             return None
 
+    # ========== User-Specific Cache Methods ==========
+
+    async def get_lob_data_by_key(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve LOB data using a custom cache key (for user-specific caching)
+        
+        Args:
+            cache_key: Full Redis key (e.g., "user:username:bu:Sales:lob:North America")
+        
+        Returns:
+            LOB dataset or None if not found
+        """
+        try:
+            client = await self.get_client()
+            
+            # Get data from Redis
+            data_json = await client.get(cache_key)
+            if not data_json:
+                logger.debug(f"No data found for cache key: {cache_key}")
+                return None
+            
+            # Parse and return data
+            data = json.loads(data_json)
+            logger.debug(f"Retrieved data from cache key: {cache_key}")
+            return data
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve data by key {cache_key}: {str(e)}")
+            return None
+
+    async def set_with_ttl(
+        self,
+        key: str,
+        value: Dict[str, Any],
+        ttl_seconds: int
+    ) -> bool:
+        """
+        Store data in Redis with custom key and TTL
+        
+        Args:
+            key: Full Redis key
+            value: Data to store (will be JSON-serialized)
+            ttl_seconds: Time-to-live in seconds
+        
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            
+            # Store data with TTL
+            await client.setex(
+                key,
+                ttl_seconds,
+                json.dumps(value)
+            )
+            
+            logger.debug(f"Stored data with key: {key}, TTL: {ttl_seconds}s")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to store data with key {key}: {str(e)}")
+            return False
+
 
 # Utility function to generate session IDs
 def generate_session_id() -> str:
