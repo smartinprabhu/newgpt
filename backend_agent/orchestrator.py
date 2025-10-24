@@ -153,7 +153,7 @@ class WorkflowOrchestrator:
         conversation_context: Optional[Dict[str, Any]] = None,
         lob_dataset: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Create context-aware prompt for agents"""
+        """Create context-aware prompt for agents with actual LOB data"""
         
         context_parts = [
             "**Business Context:**",
@@ -162,23 +162,71 @@ class WorkflowOrchestrator:
             ""
         ]
         
-        # Add LOB dataset information if available
+        # Add LOB dataset with actual data sample
         if lob_dataset:
-            row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
+            rows = lob_dataset.get("rows", [])
             columns = lob_dataset.get("columns", [])
+            row_count = len(rows) if isinstance(rows, list) else 0
             column_count = len(columns) if isinstance(columns, list) else 0
             
             context_parts.extend([
-                "**LOB Dataset Available:**",
-                f"- Dataset has {row_count} rows and {column_count} columns",
-                f"- Columns: {', '.join(columns[:10]) if columns else 'N/A'}{'...' if len(columns) > 10 else ''}",
-                "- Full dataset is available for analysis",
+                "**LOB Dataset (ACTUAL DATA - USE THIS FOR ANALYSIS):**",
+                f"- Total Records: {row_count} rows",
+                f"- Columns: {', '.join(columns) if columns else 'N/A'}",
                 ""
             ])
+            
+            # Calculate summary statistics for Value column if present
+            if row_count > 0 and 'Value' in columns:
+                try:
+                    values = [float(row.get('Value', 0)) for row in rows if 'Value' in row]
+                    if values:
+                        import statistics
+                        mean_val = statistics.mean(values)
+                        median_val = statistics.median(values)
+                        std_val = statistics.stdev(values) if len(values) > 1 else 0
+                        min_val = min(values)
+                        max_val = max(values)
+                        
+                        context_parts.extend([
+                            "**Summary Statistics:**",
+                            f"- Mean Value: {mean_val:.2f}",
+                            f"- Median Value: {median_val:.2f}",
+                            f"- Std Dev: {std_val:.2f}",
+                            f"- Min: {min_val:.2f}, Max: {max_val:.2f}",
+                            ""
+                        ])
+                except Exception as e:
+                    logger.warning(f"Failed to calculate statistics: {e}")
+            
+            # Include data sample (first 50 rows for context, full data available in metadata)
+            sample_size = min(50, row_count)
+            if sample_size > 0:
+                context_parts.extend([
+                    f"**Data Sample (First {sample_size} of {row_count} records):**",
+                    "```"
+                ])
+                
+                # Format as table header
+                context_parts.append(" | ".join(columns))
+                context_parts.append("-" * (len(columns) * 15))
+                
+                # Add sample rows
+                for i, row in enumerate(rows[:sample_size]):
+                    row_values = [str(row.get(col, 'N/A')) for col in columns]
+                    context_parts.append(" | ".join(row_values))
+                
+                context_parts.append("```")
+                context_parts.append("")
+                
+                if row_count > sample_size:
+                    context_parts.append(f"*(Showing {sample_size} of {row_count} total records - full dataset available)*")
+                    context_parts.append("")
         
         context_parts.extend([
             "**User Request:**",
-            user_prompt
+            user_prompt,
+            ""
         ])
         
         # Add conversation history context if available
@@ -186,25 +234,25 @@ class WorkflowOrchestrator:
             similar_convs = conversation_context["similar_conversations"]
             if similar_convs:
                 context_parts.extend([
-                    "",
                     "**Relevant Past Context:**"
                 ])
                 for i, conv in enumerate(similar_convs[:2], 1):  # Top 2 most similar
                     context_parts.append(f"- Previous discussion (similarity: {conv['similarity']:.2f}): {conv['query'][:100]}")
+                context_parts.append("")
         
         context_parts.extend([
-            "",
-            "**Important Guidelines:**",
-            f"1. Always reference the specific Business Unit ({business_unit}) and LOB ({line_of_business}) in your response",
-            "2. Provide specific, actionable insights - not generic advice"
+            "**CRITICAL INSTRUCTIONS:**",
+            f"1. You are analyzing REAL DATA for {business_unit} / {line_of_business}",
+            "2. The data sample above is ACTUAL data from the system - analyze it specifically",
+            "3. Reference SPECIFIC VALUES and PATTERNS from the provided data",
+            "4. Calculate statistics, identify trends, and provide data-driven insights"
         ])
         
         if lob_dataset:
-            context_parts.append("3. Use the LOB dataset provided in context to perform analysis")
-            context_parts.append("4. Be concise but comprehensive")
+            context_parts.append("5. Do NOT give generic responses - use the actual data provided above")
+            context_parts.append("6. When performing EDA, analyze the actual dates, values, and patterns shown")
         else:
-            context_parts.append("3. If you need data to provide accurate analysis, clearly state what data you need")
-            context_parts.append("4. Be concise but comprehensive")
+            context_parts.append("5. No data is currently available - explain what data you need")
         
         return "\n".join(context_parts)
 
