@@ -5,8 +5,10 @@ Based on the frontend TypeScript implementation
 """
 import aiohttp
 import logging
+import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ class ZentereAPIClient:
 
     async def authenticate(self, username: str, password: str) -> bool:
         """
-        Authenticate with Zentere API and get access token
+        Authenticate with Zentere API OAuth2 and get access token
 
         Args:
             username: Zentere username (default: martin@demo.com)
@@ -34,22 +36,26 @@ class ZentereAPIClient:
             True if authentication successful
         """
         try:
-            auth_url = f"{API_BASE_URL}/authenticate"
+            auth_url = f"{API_BASE_URL}/authentication/oauth2/token"
+
+            # Create form data (application/x-www-form-urlencoded)
+            form_data = {
+                "grant_type": "password",
+                "client_id": CLIENT_ID,
+                "username": username,
+                "password": password,
+                "client_secret": CLIENT_SECRET,
+            }
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     auth_url,
-                    json={
-                        "username": username,
-                        "password": password,
-                        "client_id": CLIENT_ID,
-                        "client_secret": CLIENT_SECRET,
-                    },
-                    headers={"Content-Type": "application/json"}
+                    data=form_data,  # aiohttp automatically encodes as form data
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
                 ) as response:
                     if response.status != 200:
-                        error_data = await response.json()
-                        logger.error(f"Authentication failed: {error_data}")
+                        error_text = await response.text()
+                        logger.error(f"Authentication failed ({response.status}): {error_text}")
                         return False
 
                     data = await response.json()
@@ -57,10 +63,11 @@ class ZentereAPIClient:
                     self.token_type = data.get("token_type", "Bearer")
 
                     logger.info(f"✅ Zentere API authenticated successfully")
+                    logger.info(f"🔑 Token type: {self.token_type}, Token length: {len(self.access_token) if self.access_token else 0}")
                     return True
 
         except Exception as e:
-            logger.error(f"Authentication error: {e}")
+            logger.error(f"Authentication error: {e}", exc_info=True)
             return False
 
     def _get_headers(self) -> Dict[str, str]:
@@ -84,9 +91,10 @@ class ZentereAPIClient:
     ) -> List[Dict[str, Any]]:
         """
         Search and read records from Zentere API
+        Matches frontend implementation exactly
 
         Args:
-            model: Model name (e.g., 'business.unit', 'line_business_lob', 'data_feeds')
+            model: Model name (e.g., 'data_feeds')
             fields: List of field names to retrieve
             domain: Search domain (filters)
             limit: Maximum number of records
@@ -97,35 +105,50 @@ class ZentereAPIClient:
             List of records
         """
         try:
+            # Build URL with query parameters (matching frontend)
             url = f"{API_BASE_URL}/search_read"
+            
+            # Build query parameters
             params = {"model": model}
-
-            payload = {
-                "fields": fields or [],
-                "domain": domain or [],
-                "limit": limit,
-                "offset": offset,
-            }
-
+            
+            if fields:
+                params["fields"] = json.dumps(fields)
+            if domain:
+                params["domain"] = json.dumps(domain)
+            if limit:
+                params["limit"] = str(limit)
+            if offset:
+                params["offset"] = str(offset)
             if order:
-                payload["order"] = order
+                params["order"] = order
+
+            # Construct full URL with query string
+            query_string = urlencode(params)
+            full_url = f"{url}?{query_string}"
+
+            logger.debug(f"📡 Fetching from {model}, limit: {limit}, offset: {offset}")
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    url,
-                    params=params,
-                    json=payload,
+                    full_url,
                     headers=self._get_headers()
                 ) as response:
                     if response.status != 200:
-                        error_data = await response.json()
-                        logger.error(f"Search failed: {error_data}")
+                        error_text = await response.text()
+                        logger.error(f"Search failed ({response.status}): {error_text}")
                         return []
 
-                    return await response.json()
+                    data = await response.json()
+                    
+                    if isinstance(data, list):
+                        logger.debug(f"✅ Returned {len(data)} records")
+                        return data
+                    else:
+                        logger.warning(f"Unexpected response format: {type(data)}")
+                        return []
 
         except Exception as e:
-            logger.error(f"Search error: {e}")
+            logger.error(f"Search error: {e}", exc_info=True)
             return []
 
     async def get_all_data_feeds(self) -> List[Dict[str, Any]]:
@@ -140,25 +163,30 @@ class ZentereAPIClient:
 
         all_records = []
         offset = 0
-        batch_size = 5000
+        batch_size = 1000  # Reduced batch size for reliability
 
         while True:
+            logger.info(f"  📥 Fetching batch at offset {offset}...")
+            
             records = await self.search_read(
                 model="data_feeds",
                 fields=["id", "date", "value", "business_unit_id", "lob_id", "parameter_id"],
-                domain=[],
+                domain=[],  # Empty domain = fetch all
                 limit=batch_size,
                 offset=offset,
                 order="date asc"
             )
 
             if not records:
+                logger.info(f"  ✅ No more records (reached end)")
                 break
 
             all_records.extend(records)
-            logger.info(f"  Fetched {len(records)} records (total: {len(all_records)})")
+            logger.info(f"  ✅ Fetched {len(records)} records (total so far: {len(all_records)})")
 
+            # If we got fewer records than batch_size, we've reached the end
             if len(records) < batch_size:
+                logger.info(f"  ✅ Last batch (< {batch_size} records)")
                 break
 
             offset += batch_size
