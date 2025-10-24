@@ -100,6 +100,19 @@ export class PythonAgentClient {
    */
   async executeAgent(request: AgentRequest): Promise<AgentTaskResponse> {
     try {
+      // Retrieve user credentials from localStorage
+      const username = localStorage.getItem('zentere_username');
+      const password = localStorage.getItem('zentere_password');
+
+      // Validate credentials are present
+      if (!username || !password) {
+        throw new PythonBackendError(
+          'Authentication credentials not found. Please log in again.',
+          401,
+          'CREDENTIALS_MISSING'
+        );
+      }
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.requestTimeout);
 
@@ -109,6 +122,8 @@ export class PythonAgentClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          username: username,
+          password: password,
           prompt: request.prompt,
           business_unit: request.businessUnit,
           line_of_business: request.lineOfBusiness,
