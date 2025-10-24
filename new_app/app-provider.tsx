@@ -575,15 +575,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const pythonClient = getPythonAgentClient();
 
-        // Prepare LOB data structure
-        // Note: The actual data structure depends on what's available in the LOB object
-        // For now, we'll send what we have and let the backend handle it
+        // Extract actual time series data from the selected LOB
+        const timeSeriesData = (state.selectedLob as any).timeSeriesData || [];
+        
+        // Transform time series data into rows and columns format
+        const rows = timeSeriesData.map((record: any) => ({
+          Date: record.Date instanceof Date ? record.Date.toISOString() : record.Date,
+          Value: record.Value || 0,
+          Orders: record.Orders || 0,
+        }));
+
+        const columns = ['Date', 'Value', 'Orders'];
+
+        console.log(`  📊 Sending ${rows.length} rows with columns: ${columns.join(', ')}`);
+
+        // Prepare LOB data structure with actual data
         const lobData = {
-          rows: (state.selectedLob as any).data?.rows || [],
-          columns: (state.selectedLob as any).data?.columns || [],
+          rows: rows,
+          columns: columns,
           source: 'zentere-api',
-          recordCount: state.selectedLob.recordCount || 0,
+          recordCount: rows.length,
           uploadedAt: state.selectedLob.dataUploaded?.toISOString() || new Date().toISOString(),
+          businessUnitName: state.selectedBu.name,
+          lobName: state.selectedLob.name,
         };
 
         // Call backend to store LOB data
@@ -596,11 +610,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             timestamp: new Date().toISOString(),
             businessUnitName: state.selectedBu.name,
             lobName: state.selectedLob.name,
+            recordCount: rows.length,
           }
         );
 
         if (result.success) {
-          console.log(`✅ LOB data prepared for ${result.lob_id}`);
+          console.log(`✅ LOB data prepared for ${result.lob_id} (${rows.length} records)`);
         }
       } catch (error) {
         // Non-blocking error - just log it
