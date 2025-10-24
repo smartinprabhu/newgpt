@@ -445,7 +445,8 @@ class WorkflowOrchestrator:
                 "final_response": "",
                 "metadata": {
                     "progress_callback": progress_callback,
-                    "current_percentage": 20
+                    "current_percentage": 20,
+                    "lob_dataset": lob_dataset
                 }
             }
             
