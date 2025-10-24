@@ -10,7 +10,7 @@ hiredis==3.0.0
 
 # LangChain and Langraph
 langchain==0.3.7
-langchain-core==0.3.15
+langchain-core==0.3.17
 langchain-openai==0.2.8
 langgraph==0.2.45
 
