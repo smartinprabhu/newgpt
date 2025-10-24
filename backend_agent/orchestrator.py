@@ -409,6 +409,18 @@ class WorkflowOrchestrator:
             # Enrich context from conversation history
             conversation_context = await self.enrich_context_from_history(session_id, prompt)
             
+            # Retrieve LOB data from Redis
+            lob_dataset = await self.redis_manager.get_lob_data(
+                business_unit=business_unit,
+                line_of_business=line_of_business
+            )
+            
+            if lob_dataset:
+                row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
+                logger.info(f"LOB data loaded for {business_unit}/{line_of_business}: {row_count} rows")
+            else:
+                logger.warning(f"No LOB data found for {business_unit}/{line_of_business}")
+            
             # Store initial context in Redis
             await self.redis_manager.store_context(
                 session_id=session_id,
