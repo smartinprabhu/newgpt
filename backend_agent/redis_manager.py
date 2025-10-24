@@ -552,6 +552,176 @@ class RedisContextManager:
             logger.error(f"Failed to get session conversations: {str(e)}")
             return []
 
+    # ========== LOB Data Management ==========
+
+    async def store_lob_data(
+        self,
+        business_unit: str,
+        line_of_business: str,
+        lob_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Store LOB dataset in Redis with metadata
+
+        Args:
+            business_unit: Business unit identifier
+            line_of_business: Line of business identifier
+            lob_data: Full LOB dataset
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+
+            # Generate keys
+            data_key = f"lob:{business_unit}:{line_of_business}:data"
+            meta_key = f"lob:{business_unit}:{line_of_business}:meta"
+
+            # Extract metadata from data
+            row_count = len(lob_data.get("rows", [])) if isinstance(lob_data.get("rows"), list) else 0
+            columns = lob_data.get("columns", [])
+            column_count = len(columns) if isinstance(columns, list) else 0
+            schema = columns if isinstance(columns, list) else []
+
+            # Create metadata
+            metadata = {
+                "last_updated": datetime.utcnow().isoformat(),
+                "row_count": row_count,
+                "column_count": column_count,
+                "schema": json.dumps(schema),
+                "data_source": lob_data.get("source", "unknown")
+            }
+
+            # Store LOB data with TTL (24 hours)
+            await client.setex(
+                data_key,
+                86400,  # 24 hours
+                json.dumps(lob_data)
+            )
+
+            # Store metadata with TTL
+            await client.hset(meta_key, mapping=metadata)
+            await client.expire(meta_key, 86400)
+
+            logger.info(f"LOB data stored: {business_unit}/{line_of_business} with {row_count} rows")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to store LOB data: {str(e)}")
+            return False
+
+    async def get_lob_data(
+        self,
+        business_unit: str,
+        line_of_business: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve LOB dataset from Redis and refresh TTL
+
+        Args:
+            business_unit: Business unit identifier
+            line_of_business: Line of business identifier
+
+        Returns:
+            LOB dataset or None if not found
+        """
+        try:
+            client = await self.get_client()
+            data_key = f"lob:{business_unit}:{line_of_business}:data"
+            meta_key = f"lob:{business_unit}:{line_of_business}:meta"
+
+            # Get LOB data
+            lob_data_json = await client.get(data_key)
+            if not lob_data_json:
+                return None
+
+            # Refresh TTL (auto-refresh on access)
+            await client.expire(data_key, 86400)
+            await client.expire(meta_key, 86400)
+
+            lob_data = json.loads(lob_data_json)
+            logger.info(f"LOB data retrieved: {business_unit}/{line_of_business}")
+            return lob_data
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve LOB data: {str(e)}")
+            return None
+
+    async def get_lob_metadata(
+        self,
+        business_unit: str,
+        line_of_business: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve LOB metadata without full dataset
+
+        Args:
+            business_unit: Business unit identifier
+            line_of_business: Line of business identifier
+
+        Returns:
+            Metadata dictionary or None if not found
+        """
+        try:
+            client = await self.get_client()
+            meta_key = f"lob:{business_unit}:{line_of_business}:meta"
+
+            metadata = await client.hgetall(meta_key)
+            if not metadata:
+                return None
+
+            # Parse schema JSON
+            if "schema" in metadata:
+                metadata["schema"] = json.loads(metadata["schema"])
+
+            # Convert numeric fields
+            if "row_count" in metadata:
+                metadata["row_count"] = int(metadata["row_count"])
+            if "column_count" in metadata:
+                metadata["column_count"] = int(metadata["column_count"])
+
+            return metadata
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve LOB metadata: {str(e)}")
+            return None
+
+    async def delete_lob_data(
+        self,
+        business_unit: str,
+        line_of_business: str
+    ) -> bool:
+        """
+        Delete LOB data and metadata from Redis
+
+        Args:
+            business_unit: Business unit identifier
+            line_of_business: Line of business identifier
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            data_key = f"lob:{business_unit}:{line_of_business}:data"
+            meta_key = f"lob:{business_unit}:{line_of_business}:meta"
+
+            # Delete both keys
+            data_deleted = await client.delete(data_key)
+            meta_deleted = await client.delete(meta_key)
+
+            if data_deleted > 0 or meta_deleted > 0:
+                logger.info(f"LOB data deleted: {business_unit}/{line_of_business}")
+                return True
+            else:
+                logger.warning(f"No LOB data found to delete: {business_unit}/{line_of_business}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to delete LOB data: {str(e)}")
+            return False
+
 
 # Utility function to generate session IDs
 def generate_session_id() -> str:
