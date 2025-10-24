@@ -153,7 +153,7 @@ class WorkflowOrchestrator:
         conversation_context: Optional[Dict[str, Any]] = None,
         lob_dataset: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Create context-aware prompt for agents with actual LOB data"""
+        """Create context-aware prompt for agents with FULL LOB data"""
         
         context_parts = [
             "**Business Context:**",
@@ -162,17 +162,20 @@ class WorkflowOrchestrator:
             ""
         ]
         
-        # Add LOB dataset with actual data sample
+        # Add LOB dataset with FULL data in JSON format
         if lob_dataset:
+            import json
             rows = lob_dataset.get("rows", [])
             columns = lob_dataset.get("columns", [])
             row_count = len(rows) if isinstance(rows, list) else 0
             column_count = len(columns) if isinstance(columns, list) else 0
             
             context_parts.extend([
-                "**LOB Dataset (ACTUAL DATA - USE THIS FOR ANALYSIS):**",
-                f"- Total Records: {row_count} rows",
-                f"- Columns: {', '.join(columns) if columns else 'N/A'}",
+                "=" * 80,
+                "LOB DATASET - FULL DATA AVAILABLE FOR ANALYSIS",
+                "=" * 80,
+                f"Total Records: {row_count} rows",
+                f"Columns: {', '.join(columns) if columns else 'N/A'}",
                 ""
             ])
             
@@ -189,42 +192,33 @@ class WorkflowOrchestrator:
                         max_val = max(values)
                         
                         context_parts.extend([
-                            "**Summary Statistics:**",
-                            f"- Mean Value: {mean_val:.2f}",
-                            f"- Median Value: {median_val:.2f}",
-                            f"- Std Dev: {std_val:.2f}",
-                            f"- Min: {min_val:.2f}, Max: {max_val:.2f}",
+                            "**Quick Statistics:**",
+                            f"Mean: {mean_val:.2f} | Median: {median_val:.2f} | Std Dev: {std_val:.2f}",
+                            f"Range: {min_val:.2f} to {max_val:.2f}",
                             ""
                         ])
                 except Exception as e:
                     logger.warning(f"Failed to calculate statistics: {e}")
             
-            # Include data sample (first 50 rows for context, full data available in metadata)
-            sample_size = min(50, row_count)
-            if sample_size > 0:
+            # Include full dataset as JSON (limit to 500 rows to stay within token limits)
+            max_rows = min(500, row_count)
+            if max_rows > 0:
                 context_parts.extend([
-                    f"**Data Sample (First {sample_size} of {row_count} records):**",
-                    "```"
+                    f"**FULL DATASET (JSON format - {max_rows} rows):**",
+                    "```json",
+                    json.dumps(rows[:max_rows], indent=2),
+                    "```",
+                    ""
                 ])
                 
-                # Format as table header
-                context_parts.append(" | ".join(columns))
-                context_parts.append("-" * (len(columns) * 15))
-                
-                # Add sample rows
-                for i, row in enumerate(rows[:sample_size]):
-                    row_values = [str(row.get(col, 'N/A')) for col in columns]
-                    context_parts.append(" | ".join(row_values))
-                
-                context_parts.append("```")
-                context_parts.append("")
-                
-                if row_count > sample_size:
-                    context_parts.append(f"*(Showing {sample_size} of {row_count} total records - full dataset available)*")
+                if row_count > max_rows:
+                    context_parts.append(f"Note: Showing first {max_rows} of {row_count} total records for token efficiency.")
                     context_parts.append("")
         
         context_parts.extend([
-            "**User Request:**",
+            "=" * 80,
+            "USER REQUEST",
+            "=" * 80,
             user_prompt,
             ""
         ])
@@ -234,25 +228,50 @@ class WorkflowOrchestrator:
             similar_convs = conversation_context["similar_conversations"]
             if similar_convs:
                 context_parts.extend([
-                    "**Relevant Past Context:**"
+                    "**Previous Related Conversations:**"
                 ])
-                for i, conv in enumerate(similar_convs[:2], 1):  # Top 2 most similar
-                    context_parts.append(f"- Previous discussion (similarity: {conv['similarity']:.2f}): {conv['query'][:100]}")
+                for i, conv in enumerate(similar_convs[:2], 1):
+                    context_parts.append(f"{i}. {conv['query'][:100]}")
                 context_parts.append("")
         
         context_parts.extend([
-            "**CRITICAL INSTRUCTIONS:**",
-            f"1. You are analyzing REAL DATA for {business_unit} / {line_of_business}",
-            "2. The data sample above is ACTUAL data from the system - analyze it specifically",
-            "3. Reference SPECIFIC VALUES and PATTERNS from the provided data",
-            "4. Calculate statistics, identify trends, and provide data-driven insights"
+            "=" * 80,
+            "CRITICAL INSTRUCTIONS FOR ANALYSIS",
+            "=" * 80,
         ])
         
-        if lob_dataset:
-            context_parts.append("5. Do NOT give generic responses - use the actual data provided above")
-            context_parts.append("6. When performing EDA, analyze the actual dates, values, and patterns shown")
+        if lob_dataset and row_count > 0:
+            context_parts.extend([
+                f"✓ REAL DATA IS PROVIDED ABOVE for {business_unit} / {line_of_business}",
+                f"✓ You have {max_rows if max_rows < row_count else row_count} data records in JSON format",
+                f"✓ Columns available: {', '.join(columns) if columns else 'N/A'}",
+                "",
+                "YOU MUST:",
+                "1. Extract and analyze the JSON dataset provided above",
+                "2. Perform calculations directly on the data (mean, median, trends, patterns)",
+                "3. Reference SPECIFIC dates and values from the dataset",
+                "4. Identify ACTUAL trends, seasonality, anomalies in the data",
+                "5. Base ALL conclusions on the REAL data shown above",
+                "",
+                "DO NOT:",
+                "- Say 'I need data' when data is provided above",
+                "- Give generic responses without using the data",
+                "- Make up statistics not derived from the dataset",
+                "- Ask for data that's already provided",
+                "",
+                "EXAMPLE of what to do:",
+                "✓ 'The data shows 245 records from 2024-01-01 to 2024-08-31'",
+                "✓ 'Peak value of 1,456.8 occurred on 2024-03-15'",
+                "✓ 'Mean value is 1,234.5 with standard deviation of 156.3'",
+                "✓ 'There's an upward trend visible from Q1 to Q2 with 15% growth'",
+                "",
+                "Now perform the analysis using the data provided above."
+            ])
         else:
-            context_parts.append("5. No data is currently available - explain what data you need")
+            context_parts.extend([
+                "⚠ NO DATA CURRENTLY AVAILABLE",
+                "Explain what data you need for this analysis.",
+            ])
         
         return "\n".join(context_parts)
 
