@@ -489,6 +489,13 @@ class WorkflowOrchestrator:
         try:
             logger.info(f"Starting workflow execution - Session: {session_id}, Prompt: {prompt[:100]}...")
             
+            logger.info("=" * 80)
+            logger.info("🎯 WORKFLOW ORCHESTRATOR - DATA RETRIEVAL")
+            logger.info("=" * 80)
+            logger.info(f"📝 User Prompt: {prompt[:100]}...")
+            logger.info(f"🏢 Business Unit: '{business_unit}'")
+            logger.info(f"📊 Line of Business: '{line_of_business}'")
+            
             # Report initial progress
             await progress_callback("Analyzing query and selecting agent...", "Orchestrator", 5)
             
@@ -501,10 +508,34 @@ class WorkflowOrchestrator:
             conversation_context = await self.enrich_context_from_history(session_id, prompt)
             
             # Retrieve LOB data from Redis
+            logger.info("🔍 Attempting to retrieve LOB data from Redis...")
+            logger.info(f"   Looking for: lob:{business_unit}:{line_of_business}:data")
+            
             lob_dataset = await self.redis_manager.get_lob_data(
                 business_unit=business_unit,
                 line_of_business=line_of_business
             )
+            
+            if lob_dataset:
+                row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
+                columns = lob_dataset.get("columns", [])
+                logger.info("=" * 80)
+                logger.info(f"✅ LOB DATA FOUND AND LOADED!")
+                logger.info(f"   Business Unit: {business_unit}")
+                logger.info(f"   Line of Business: {line_of_business}")
+                logger.info(f"   Rows: {row_count}")
+                logger.info(f"   Columns: {columns}")
+                logger.info(f"   Source: {lob_dataset.get('source', 'unknown')}")
+                if row_count > 0:
+                    logger.info(f"   Sample (first row): {lob_dataset.get('rows', [])[0] if lob_dataset.get('rows') else 'N/A'}")
+                logger.info("=" * 80)
+            else:
+                logger.warning("=" * 80)
+                logger.warning(f"❌ NO LOB DATA FOUND IN REDIS!")
+                logger.warning(f"   Searched for: {business_unit}/{line_of_business}")
+                logger.warning(f"   Redis key pattern: lob:{business_unit}:{line_of_business}:data")
+                logger.warning("   Agents will receive NO DATASET in their prompt!")
+                logger.warning("=" * 80)
             
             if lob_dataset:
                 row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
