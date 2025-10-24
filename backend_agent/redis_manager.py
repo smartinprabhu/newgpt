@@ -722,6 +722,111 @@ class RedisContextManager:
             logger.error(f"Failed to delete LOB data: {str(e)}")
             return False
 
+    # ========== Zentere Data Management (Complete BU/LOB Structure) ==========
+
+    async def store_all_zentere_data(self, organized_data: Dict[str, Any]) -> bool:
+        """
+        Store ALL BU/LOB data from Zentere in Redis
+        This is called on backend startup to pre-load all data
+
+        Args:
+            organized_data: Complete hierarchical BU/LOB data structure
+
+        Returns:
+            bool: Success status
+        """
+        try:
+            client = await self.get_client()
+            
+            total_bus = len(organized_data)
+            total_lobs = 0
+            total_records = 0
+
+            # Store each BU and its LOBs
+            for bu_code, bu_data in organized_data.items():
+                lobs = bu_data.get("lobs", {})
+                
+                for lob_code, lob_data in lobs.items():
+                    data_records = lob_data.get("data", [])
+                    
+                    # Prepare LOB data structure
+                    lob_dataset = {
+                        "rows": data_records,
+                        "columns": ["Date", "Value", "Orders", "Parameter"],
+                        "source": "zentere-api-startup",
+                        "recordCount": len(data_records),
+                        "businessUnitName": bu_data.get("name"),
+                        "lobName": lob_data.get("name"),
+                        "fetchedAt": datetime.utcnow().isoformat()
+                    }
+
+                    # Store LOB data
+                    data_key = f"lob:{bu_code}:{lob_code}:data"
+                    meta_key = f"lob:{bu_code}:{lob_code}:meta"
+
+                    # Store data with TTL (24 hours)
+                    await client.setex(
+                        data_key,
+                        86400,
+                        json.dumps(lob_dataset)
+                    )
+
+                    # Store metadata
+                    metadata = {
+                        "last_updated": datetime.utcnow().isoformat(),
+                        "row_count": len(data_records),
+                        "column_count": 4,
+                        "schema": json.dumps(["Date", "Value", "Orders", "Parameter"]),
+                        "data_source": "zentere-api-startup",
+                        "business_unit_name": bu_data.get("name"),
+                        "lob_name": lob_data.get("name")
+                    }
+
+                    await client.hset(meta_key, mapping=metadata)
+                    await client.expire(meta_key, 86400)
+
+                    total_lobs += 1
+                    total_records += len(data_records)
+
+            # Store index of all BU/LOB codes for reference
+            index_key = "zentere:bu_lob_index"
+            index_data = {
+                "business_units": list(organized_data.keys()),
+                "last_updated": datetime.utcnow().isoformat(),
+                "total_bus": total_bus,
+                "total_lobs": total_lobs,
+                "total_records": total_records
+            }
+            await client.setex(index_key, 86400, json.dumps(index_data))
+
+            logger.info(f"✅ Stored Zentere data in Redis: {total_bus} BUs, {total_lobs} LOBs, {total_records} records")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to store Zentere data: {str(e)}")
+            return False
+
+    async def get_zentere_index(self) -> Optional[Dict[str, Any]]:
+        """
+        Get index of all available BU/LOB codes in Redis
+
+        Returns:
+            Dictionary with BU codes and metadata
+        """
+        try:
+            client = await self.get_client()
+            index_key = "zentere:bu_lob_index"
+
+            index_json = await client.get(index_key)
+            if not index_json:
+                return None
+
+            return json.loads(index_json)
+
+        except Exception as e:
+            logger.error(f"Failed to get Zentere index: {str(e)}")
+            return None
+
 
 # Utility function to generate session IDs
 def generate_session_id() -> str:
