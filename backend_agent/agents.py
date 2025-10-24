@@ -218,9 +218,16 @@ class AgentFactory:
                 "Compare multiple scenarios (best case, worst case, expected case).",
                 "Analyze the impact of volume changes, resource changes, and external factors.",
                 "Always contextualize scenarios to the specific Business Unit and Line of Business.",
+                "Use the LOB dataset provided in context to perform analysis.",
                 "Provide probabilistic outcomes and risk assessments.",
                 "Recommend contingency plans and mitigation strategies.",
-                "Use data-driven approaches to quantify impacts."
+                "Use data-driven approaches to quantify impacts.",
+                "",
+                "**Response Formatting Requirements:**",
+                "1. Highlight all statistical values using: <span class=\"stat-inline\">{value}</span>",
+                "2. Include scenario probabilities, impact percentages, and risk metrics with highlighting.",
+                "3. Create a key insights section: <div class=\"insights-section\">📊 **Key Insights**\\n\\n{findings}</div>",
+                "4. Use markdown with HTML inline styling for statistics."
             ]
         )
 
