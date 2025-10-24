@@ -211,25 +211,34 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
         if len(request.prompt) > 2000:
             raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
         
-        # Validate required fields
-        if not request.business_unit:
-            raise HTTPException(status_code=400, detail="Business unit is required")
+        # Validate and sanitize required fields
+        business_unit = request.business_unit.strip() if request.business_unit else "Unknown BU"
+        line_of_business = request.line_of_business.strip() if request.line_of_business else "Unknown LOB"
         
-        if not request.line_of_business:
-            raise HTTPException(status_code=400, detail="Line of business is required")
+        # Use defaults if empty strings received
+        if not business_unit or business_unit == "":
+            business_unit = "Default Business Unit"
+        if not line_of_business or line_of_business == "":
+            line_of_business = "Default Line of Business"
+        
+        logger.info(f"📥 Received request:")
+        logger.info(f"   Prompt: {request.prompt[:100]}...")
+        logger.info(f"   Business Unit: {business_unit}")
+        logger.info(f"   Line of Business: {line_of_business}")
+        logger.info(f"   Session ID: {request.session_id or 'New session'}")
         
         # Generate unique task ID
         task_id = f"task_{uuid.uuid4().hex[:16]}"
         
-        logger.info(f"Creating task: {task_id} for prompt: {request.prompt[:100]}...")
+        logger.info(f"Creating task: {task_id}")
         
         # Create task in Redis
         task_created = await redis_manager.create_task(
             task_id,
             {
                 "prompt": request.prompt,
-                "business_unit": request.business_unit,
-                "line_of_business": request.line_of_business,
+                "business_unit": business_unit,
+                "line_of_business": line_of_business,
                 "suggested_agent_type": request.suggested_agent_type,
                 "session_id": request.session_id,
                 "context": request.context
@@ -248,7 +257,7 @@ async def execute_agent(request: AgentExecutionRequest, background_tasks: Backgr
             orchestrator
         )
         
-        logger.info(f"Task created and scheduled: {task_id}")
+        logger.info(f"✅ Task created and scheduled: {task_id}")
         
         return AgentTaskResponse(
             success=True,
