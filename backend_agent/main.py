@@ -374,6 +374,139 @@ async def clear_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/lob/store", response_model=LOBDataResponse)
+async def store_lob_data(request: LOBDataRequest):
+    """
+    Store LOB data in Redis when user selects LOB from frontend
+    
+    Flow:
+    1. Validate request (business_unit and line_of_business not empty)
+    2. Extract row_count and column_count from data
+    3. Store LOB data in Redis with 24-hour TTL
+    4. Return success response with lob_id
+    """
+    try:
+        # Validate required fields
+        if not request.business_unit or request.business_unit.strip() == "":
+            raise HTTPException(status_code=400, detail="Business unit cannot be empty")
+        
+        if not request.line_of_business or request.line_of_business.strip() == "":
+            raise HTTPException(status_code=400, detail="Line of business cannot be empty")
+        
+        if not request.data:
+            raise HTTPException(status_code=400, detail="Data field cannot be empty")
+        
+        logger.info(f"Storing LOB data: {request.business_unit}/{request.line_of_business}")
+        
+        # Store LOB data in Redis
+        success = await redis_manager.store_lob_data(
+            business_unit=request.business_unit,
+            line_of_business=request.line_of_business,
+            lob_data=request.data
+        )
+        
+        if not success:
+            raise HTTPException(status_code=503, detail="Failed to store LOB data in Redis")
+        
+        # Get metadata for response
+        metadata = await redis_manager.get_lob_metadata(
+            business_unit=request.business_unit,
+            line_of_business=request.line_of_business
+        )
+        
+        lob_id = f"{request.business_unit}/{request.line_of_business}"
+        
+        return LOBDataResponse(
+            success=True,
+            message="LOB data stored successfully",
+            lob_id=lob_id,
+            metadata=metadata
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error storing LOB data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to store LOB data: {str(e)}")
+
+
+@app.get("/api/lob/{business_unit}/{line_of_business}")
+async def get_lob_data(business_unit: str, line_of_business: str):
+    """
+    Retrieve LOB data from Redis (for debugging)
+    
+    Returns:
+    - Full LOB dataset with metadata
+    - 404 if LOB not found
+    """
+    try:
+        logger.info(f"Retrieving LOB data: {business_unit}/{line_of_business}")
+        
+        # Get LOB data from Redis
+        lob_data = await redis_manager.get_lob_data(
+            business_unit=business_unit,
+            line_of_business=line_of_business
+        )
+        
+        if not lob_data:
+            raise HTTPException(status_code=404, detail="LOB data not found")
+        
+        # Get metadata
+        metadata = await redis_manager.get_lob_metadata(
+            business_unit=business_unit,
+            line_of_business=line_of_business
+        )
+        
+        return {
+            "lob_id": f"{business_unit}/{line_of_business}",
+            "data": lob_data,
+            "metadata": metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving LOB data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/lob/{business_unit}/{line_of_business}", response_model=LOBDataResponse)
+async def delete_lob_data(business_unit: str, line_of_business: str):
+    """
+    Clear LOB data from Redis
+    
+    Returns:
+    - Success response if deleted
+    - 404 if LOB not found
+    """
+    try:
+        logger.info(f"Deleting LOB data: {business_unit}/{line_of_business}")
+        
+        # Delete LOB data from Redis
+        success = await redis_manager.delete_lob_data(
+            business_unit=business_unit,
+            line_of_business=line_of_business
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="LOB data not found")
+        
+        lob_id = f"{business_unit}/{line_of_business}"
+        
+        return LOBDataResponse(
+            success=True,
+            message="LOB data deleted successfully",
+            lob_id=lob_id,
+            metadata=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting LOB data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
