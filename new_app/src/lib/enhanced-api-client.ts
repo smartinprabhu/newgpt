@@ -334,35 +334,96 @@ export class EnhancedAPIClient {
     const { provider, model, messages, temperature, max_tokens } = params;
 
     try {
-      const apiKey = this.config.openaiKey;
-      if (!apiKey) {
-        throw new Error('OpenAI API key is not configured.');
-      }
-
-      const response = await fetch('/api/proxy', {
+      // **PYTHON BACKEND INTEGRATION**
+      // Instead of calling OpenAI directly, route through Python backend (Agno + Langgraph)
+      
+      const pythonBackendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://localhost:8000';
+      
+      // Extract user message from messages array
+      const userMessage = messages.filter(m => m.role === 'user').map(m => m.content).join('\n') || 
+                          messages[messages.length - 1]?.content || 'Hello';
+      
+      // Get BU and LOB from app state (stored in localStorage for now)
+      const selectedBu = typeof window !== 'undefined' ? localStorage.getItem('current_bu') || 'Default BU' : 'Default BU';
+      const selectedLob = typeof window !== 'undefined' ? localStorage.getItem('current_lob') || 'Default LOB' : 'Default LOB';
+      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('chat_session_id') || undefined : undefined;
+      
+      // Create task on Python backend
+      const taskResponse = await fetch(`${pythonBackendUrl}/api/agent/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'chat_completion',
-          provider,
-          model,
-          messages,
-          temperature,
-          max_tokens,
-          apiKey,
+          prompt: userMessage,
+          business_unit: selectedBu,
+          line_of_business: selectedLob,
+          session_id: sessionId,
+          context: {
+            conversationHistory: messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
+          }
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Chat completion request failed');
+      if (!taskResponse.ok) {
+        throw new Error(`Python backend returned ${taskResponse.status}: ${await taskResponse.text()}`);
       }
 
-      const data = await response.json();
-      return data;
+      const taskData = await taskResponse.json();
+      const taskId = taskData.task_id;
+
+      // Poll for completion (simple polling with max 2 minutes)
+      let attempts = 0;
+      const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+        
+        const statusResponse = await fetch(`${pythonBackendUrl}/api/agent/status/${taskId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!statusResponse.ok) {
+          throw new Error(`Failed to check task status: ${statusResponse.status}`);
+        }
+
+        const status = await statusResponse.json();
+        
+        if (status.status === 'completed' && status.result) {
+          // Transform Python backend response to match OpenAI format
+          return {
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: status.result.response
+              },
+              finish_reason: 'stop'
+            }],
+            usage: {
+              total_tokens: 0, // Python backend doesn't return token usage
+              prompt_tokens: 0,
+              completion_tokens: 0
+            },
+            model: status.result.agent_type || 'python-backend',
+            fromPythonBackend: true,
+            workflow_steps: status.result.workflow_steps,
+            execution_time: status.result.execution_time
+          };
+        } else if (status.status === 'error') {
+          throw new Error(status.error_message || 'Python backend error');
+        }
+        
+        attempts++;
+      }
+      
+      // Timeout after 2 minutes
+      throw new Error('Task timeout: Python backend took longer than 2 minutes');
+
     } catch (error) {
+      console.error('Python backend error:', error);
       throw this.handleError(error);
     }
   }
