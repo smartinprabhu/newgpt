@@ -107,6 +107,20 @@ class TaskStatusResponse(BaseModel):
     error_code: Optional[str] = None
 
 
+class LOBDataRequest(BaseModel):
+    business_unit: str = Field(..., description="Business unit identifier")
+    line_of_business: str = Field(..., description="Line of business identifier")
+    data: Dict[str, Any] = Field(..., description="LOB dataset (full data)")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
+
+
+class LOBDataResponse(BaseModel):
+    success: bool
+    message: str
+    lob_id: str  # Format: "{business_unit}/{line_of_business}"
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class AgentExecutionResponse(BaseModel):
     success: bool
     response: str
