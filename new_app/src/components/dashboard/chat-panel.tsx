@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 import AgentMonitorPanel from './agent-monitor';
 import DataVisualizer from './data-visualizer';
 
+// Import Python backend client instead of OpenAI
+import { getPythonAgentClient, PythonBackendError, TaskTimeoutError } from '@/lib/python-agent-client';
+
 type AgentConfig = {
   name: string;
   emoji: string;
@@ -22,13 +25,6 @@ type AgentConfig = {
   keywords: string[];
   systemPrompt: string;
 };
-
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-});
 
 export const AGENTS: Record<string, AgentConfig> = {
     eda: {
@@ -199,254 +195,19 @@ What sounds most useful to you?"`
     }
 };
 
-class MultiAgentChatHandler {
-  conversationHistory: { role: 'user' | 'assistant' | 'system'; content: string }[] = [];
-  private dispatch: any;
-  private currentAgent: string = 'general';
-
-  constructor(dispatch: any) {
-    this.dispatch = dispatch;
-  }
-
-  // Agent Selection Logic with sequential workflow support
-  selectAgent(userMessage: string, context: any): string[] {
-    const lowerMessage = userMessage.toLowerCase();
-    const selectedAgents: string[] = [];
-
-    // Define sequential workflow for forecasting (only on explicit action)
-    const forecastingWorkflow = ['eda', 'forecasting'];
-
-    // Trigger only when user explicitly asks to run/generate/start a forecast
-    if (/(run|start|generate|create)\s+(a\s+)?forecast/i.test(lowerMessage) || /run.*forecast|generate.*forecast|start.*forecast/i.test(lowerMessage)) {
-      this.dispatch({
-        type: 'ADD_THINKING_STEP',
-        payload: '🔄 Forecasting workflow initiated'
-      });
-      return forecastingWorkflow;
-    }
-
-    // Otherwise, check each agent's keywords for single agent selection
-    for (const [agentKey, agent] of Object.entries(AGENTS)) {
-      if (agentKey === 'general') continue;
-
-      for (const keyword of agent.keywords) {
-        if (lowerMessage.includes(keyword)) {
-          selectedAgents.push(agentKey);
-          this.dispatch({
-            type: 'ADD_THINKING_STEP',
-            payload: `${agent.emoji} ${agent.name} selected`
-          });
-          break;
-        }
-      }
-      if (selectedAgents.length > 0) break;
-    }
-
-    if (selectedAgents.length === 0) {
-      this.dispatch({
-        type: 'ADD_THINKING_STEP',
-        payload: `${AGENTS.general.emoji} General Assistant selected`
-      });
-      selectedAgents.push('general');
-    }
-
-    return selectedAgents;
-  }
-  
-  // Create workflow steps based on selected agents
-  createWorkflowSteps(agentKeys: string[]): WorkflowStep[] {
-    const workflowMap: Record<string, { name: string; time: string; details: string }> = {
-      eda: { 
-        name: 'Analyzing Your Data', 
-        time: '15-30s', 
-        details: 'Examining patterns, trends, and data quality' 
-      },
-      forecasting: { 
-        name: 'Generating Forecast', 
-        time: '20-40s', 
-        details: 'Creating predictions based on historical patterns' 
-      },
-      whatif: { 
-        name: 'Running Scenarios', 
-        time: '15-25s', 
-        details: 'Comparing different business scenarios' 
-      },
-      comparative: { 
-        name: 'Comparing Performance', 
-        time: '15-30s', 
-        details: 'Benchmarking and identifying gaps' 
-      },
-      general: { 
-        name: 'Processing Request', 
-        time: '10-20s', 
-        details: 'Understanding and responding to your query' 
-      }
-    };
-
-    return agentKeys.map((key, index) => {
-      const config = workflowMap[key] || workflowMap.general;
-      const agent = AGENTS[key] || AGENTS.general;
-      
-      return {
-        id: `step-${index + 1}`,
-        name: config.name,
-        status: index === 0 ? 'active' : 'pending',
-        dependencies: index > 0 ? [`step-${index}`] : [],
-        estimatedTime: config.time,
-        details: config.details,
-        agent: agent.name
-      };
-    });
-  }
-
-  async generateResponse(userMessage: string, context: any) {
-    this.dispatch({ type: 'ADD_THINKING_STEP', payload: '🔍 Analyzing request...' });
-
-    // Select appropriate agents (could be multiple for sequential workflow)
-    const agentsToUse = this.selectAgent(userMessage, context);
-    
-    // CREATE WORKFLOW STEPS IMMEDIATELY
-    const workflowSteps = this.createWorkflowSteps(agentsToUse);
-    this.dispatch({ type: 'SET_WORKFLOW', payload: workflowSteps });
-    
-    let finalResponse = '';
-    let finalReportData = null;
-    let finalAgentType = 'general';
-
-    for (let i = 0; i < agentsToUse.length; i++) {
-      const agentKey = agentsToUse[i];
-      this.currentAgent = agentKey;
-      finalAgentType = agentKey;
-      const agent = AGENTS[agentKey];
-      const systemPrompt = this.buildSystemPrompt(context, agent);
-      const currentStepId = `step-${i + 1}`;
-
-      // Mark current step as active
-      this.dispatch({ 
-        type: 'UPDATE_WORKFLOW_STEP', 
-        payload: { id: currentStepId, status: 'active' } 
-      });
-
-      this.conversationHistory.push({ role: "user", content: userMessage });
-
-      try {
-        this.dispatch({ type: 'ADD_THINKING_STEP', payload: `🔗 Connecting to AI for ${agent.name}...` });
-
-        this.dispatch({ type: 'ADD_THINKING_STEP', payload: `${agent.emoji} ${agent.name} processing...` });
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...this.conversationHistory
-          ],
-          temperature: 0.3,
-          max_tokens: 800
-        });
-
-        const aiResponse = completion.choices[0].message.content ?? "";
-        this.dispatch({ type: 'ADD_THINKING_STEP', payload: `✅ ${agent.name} analysis complete` });
-
-        // Mark current step as completed
-        this.dispatch({ 
-          type: 'UPDATE_WORKFLOW_STEP', 
-          payload: { id: currentStepId, status: 'completed' } 
-        });
-
-        // Append response for final output
-        finalResponse += aiResponse + '\n';
-
-        // Parse report data if present
-        const reportMatch = aiResponse.match(/\[REPORT_DATA\]([\s\S]*?)\[\/REPORT_DATA\]/);
-        if (reportMatch) {
-          try {
-            finalReportData = JSON.parse(reportMatch[1].trim());
-            this.dispatch({ type: 'ADD_THINKING_STEP', payload: '📄 Report data extracted' });
-          } catch (e) {
-            console.error('Failed to parse report data:', e);
-          }
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        this.conversationHistory.push({ role: "assistant", content: aiResponse });
-
-      } catch (error) {
-        console.error('AI Error:', error);
-        
-        // Mark step as error
-        this.dispatch({ 
-          type: 'UPDATE_WORKFLOW_STEP', 
-          payload: { id: currentStepId, status: 'error' } 
-        });
-        
-        this.dispatch({ type: 'CLEAR_THINKING_STEPS' });
-        return {
-          response: "Sorry, I'm having trouble connecting right now. Please try again.",
-          agentType: 'general',
-          reportData: null
-        };
-      }
-    }
-
-    this.dispatch({ type: 'CLEAR_THINKING_STEPS' });
-    return {
-      response: finalResponse.trim() || "Sorry, I couldn't generate a response.",
-      agentType: finalAgentType,
-      reportData: finalReportData
-    };
-  }
-
-
-  // Removed duplicate generateResponse function to fix TS error
-
-  buildSystemPrompt(context: any, agent: AgentConfig) {
-    const { selectedBu, selectedLob, userPrompt } = context;
-    this.dispatch({ type: 'ADD_THINKING_STEP', payload: '📋 Building context...' });
-
-    let dataContext = 'No data uploaded yet';
-    let dataInsights = '';
-
-    if (selectedLob?.hasData) {
-      const dq = selectedLob.dataQuality;
-      const wantsOutliers = /\b(outlier|anomal|quality\s*check)\b/i.test(userPrompt || '');
-      dataContext = `
-📊 YOUR DATA:
-• ${selectedLob.recordCount} records
-• Data quality: ${dq?.completeness >= 90 ? 'Excellent' : dq?.completeness >= 70 ? 'Good' : 'Needs improvement'} (${dq?.completeness}% complete)
-• Trend: ${dq?.trend || 'Stable'}
-• Pattern: ${dq?.seasonality?.replace(/_/g, ' ') || 'No clear pattern yet'}
-${wantsOutliers ? `• Outliers: ${dq?.outliers || 0} potential anomalies` : ''}
-`;
-
-      this.dispatch({ type: 'ADD_THINKING_STEP', payload: '✓ Context loaded' });
-    }
-
-    return `${agent.systemPrompt}
-
-🏢 BUSINESS INFO:
-• Business Unit: ${selectedBu?.name || 'Not selected'}
-• Line of Business: ${selectedLob?.name || 'Not selected'}
-
-${dataContext}
-
-💬 CUSTOMER ASKED:
-"${userPrompt || ''}"
-
-⚡ YOUR RESPONSE RULES:
-1. Keep it SHORT - 3-5 bullet points max
-2. Use SIMPLE language - pretend you're talking to your friend
-3. Focus on ACTIONS they can take
-4. Be SPECIFIC to their business (${selectedLob?.name || 'their data'})
-5. End with "What would you like to do next?"
-6. If unsure, ask a clarifying question. Do not fabricate details.
-7. Only discuss outliers when the user asks about outliers, anomalies, or quality checks.
-8. Use emojis to make it friendly 😊
-
-Remember: You're ${agent.specialty} - use your expertise to help them succeed!`;
-  }
-}
-
 let chatHandler: MultiAgentChatHandler | null = null;
+
+// Helper function to map frontend agent types to backend agent types
+function mapAgentTypeToBackend(frontendAgentType: string): string {
+  const agentMapping: Record<string, string> = {
+    'eda': 'Data Analysis',
+    'forecasting': 'Forecasting',
+    'whatif': 'What If & Scenario Analyst',
+    'comparative': 'Data Analysis',
+    'general': 'Onboarding'
+  };
+  return agentMapping[frontendAgentType] || 'Data Analysis';
+}
 
 // Helper function to extract outliers from EDA response
 function extractOutliersFromResponse(responseText: string, data?: WeeklyData[]): OutlierData[] {
@@ -456,7 +217,7 @@ function extractOutliersFromResponse(responseText: string, data?: WeeklyData[]):
   
   // Look for outlier mentions in the response
   // Pattern 1: "X outliers found" or "X unusual values"
-  const outlierCountMatch = responseText.match(/(\d+)\s+(?:outliers?|unusual values?)/i);
+  const outlierCountMatch = responseText.match(/\b(\d+)\s+(?:outliers?|unusual values?)/i);
   
   if (outlierCountMatch) {
     const count = parseInt(outlierCountMatch[1]);
@@ -771,6 +532,21 @@ export default function ChatPanel({ className }: { className?: string }) {
       return;
     }
     
+    // Check if BU and LOB are selected
+    if (!state.selectedBu || !state.selectedLob) {
+      dispatch({
+        type: 'ADD_MESSAGE',
+        payload: {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '⚠️ Please select a Business Unit and Line of Business before asking questions.',
+          agentType: 'general',
+          suggestions: ['Create Business Unit', 'Create Line of Business']
+        }
+      });
+      return;
+    }
+    
     dispatch({ type: 'SET_PROCESSING', payload: true });
     dispatch({ type: 'CLEAR_THINKING_STEPS' });
 
@@ -796,152 +572,212 @@ export default function ChatPanel({ className }: { className?: string }) {
     });
 
     try {
-      const { response: responseText, agentType, reportData } = await chatHandler!.generateResponse(messageText, {
-        selectedBu: state.selectedBu,
-        selectedLob: state.selectedLob,
-        businessUnits: state.businessUnits,
-        userPrompt: messageText,
+      // Detect suggested agent type from message (optional - backend will analyze too)
+      const messageLower = messageText.toLowerCase();
+      let suggestedAgentType: string | undefined;
+      
+      for (const [agentKey, agent] of Object.entries(AGENTS)) {
+        if (agentKey === 'general') continue;
+        for (const keyword of agent.keywords) {
+          if (messageLower.includes(keyword)) {
+            suggestedAgentType = mapAgentTypeToBackend(agentKey);
+            break;
+          }
+        }
+        if (suggestedAgentType) break;
+      }
+
+      // Get Python backend client
+      const pythonClient = getPythonAgentClient();
+
+      // Add thinking step
+      dispatch({ type: 'ADD_THINKING_STEP', payload: '🚀 Connecting to Python backend...' });
+
+      // Create task on backend
+      const taskResponse = await pythonClient.executeAgent({
+        prompt: messageText,
+        businessUnit: state.selectedBu.displayName || state.selectedBu.name,
+        lineOfBusiness: state.selectedLob.name,
+        suggestedAgentType,
+        sessionId: state.sessionId || undefined,
+        context: {
+          conversationHistory: state.messages
+            .filter(m => m.role === 'user' || m.role === 'assistant')
+            .slice(-10) // Last 10 messages
+            .map(m => ({ role: m.role, content: m.content }))
+        }
       });
 
-      // Parse workflow plan
-      const workflowMatch = responseText.match(/\[WORKFLOW_PLAN\]([\s\S]*?)\[\/WORKFLOW_PLAN\]/);
-      if (workflowMatch?.[1]) {
-        try {
-          const planJson = JSON.parse(workflowMatch[1]);
-          const workflow: WorkflowStep[] = planJson.map((step: any, i: number) => ({
-            ...step,
-            id: `step-${i + 1}`,
-            status: 'pending',
-            dependencies: i > 0 ? [`step-${i}`] : [],
-            agent: agentType
-          }));
-          dispatch({ type: 'SET_WORKFLOW', payload: workflow });
-        } catch(e) {
-          console.error("Failed to parse workflow:", e);
+      dispatch({ type: 'ADD_THINKING_STEP', payload: `✅ Task created: ${taskResponse.task_id}` });
+      dispatch({ type: 'ADD_THINKING_STEP', payload: '⏳ Waiting for agent response...' });
+
+      // Poll for task completion with progress updates
+      const finalStatus = await pythonClient.pollUntilComplete(
+        taskResponse.task_id,
+        (status) => {
+          // Update thinking steps based on progress
+          if (status.status === 'running' && status.progress) {
+            dispatch({ type: 'ADD_THINKING_STEP', payload: `${status.current_agent ? status.current_agent + ': ' : ''}${status.progress}` });
+          }
+          
+          // Update workflow steps if available
+          if (status.result?.workflow_steps) {
+            const workflowSteps: WorkflowStep[] = status.result.workflow_steps.map((step, index) => ({
+              id: `step-${index + 1}`,
+              name: step.agent_name,
+              status: step.status === 'completed' ? 'completed' : step.status === 'error' ? 'error' : 'active',
+              dependencies: index > 0 ? [`step-${index}`] : [],
+              estimatedTime: `${step.duration_ms}ms`,
+              details: step.output_summary,
+              agent: step.agent_type
+            }));
+            dispatch({ type: 'SET_WORKFLOW', payload: workflowSteps });
+          }
         }
-      }
-      
+      );
+
+      dispatch({ type: 'CLEAR_THINKING_STEPS' });
       dispatch({ type: 'SET_PROCESSING', payload: false });
 
-      // Parse suggestions
-      // Remove 's' flag to avoid ES2018+ requirement
-      const suggestionMatch = responseText.match(/\*\*(?:What's next\?|Next Steps?:?)\*\*([\s\S]*)/);
-      let content = responseText;
-      let suggestions: string[] = [];
+      // Handle response based on status
+      if (finalStatus.status === 'completed' && finalStatus.result) {
+        const result = finalStatus.result;
+        const responseText = result.response;
+        const agentType = result.agent_type;
 
-      if (suggestionMatch?.[1]) {
-        content = responseText.replace(/\*\*(?:What's next\?|Next Steps?:?)\*\*([\s\S]*)/i, '').trim();
-        suggestions = suggestionMatch[1]
-          .split(/[\n•-]/)
-          .map(s => s.trim().replace(/^"|"$/g, ''))
-          .filter(s => s.length > 5 && s.length < 100)
-          .slice(0, 3);
-      }
+        // Map backend agent type to frontend agent type for UI
+        const backendToFrontendAgent: Record<string, string> = {
+          'Data Analysis': 'eda',
+          'Forecasting': 'forecasting',
+          'Short Term Forecasting': 'forecasting',
+          'Long Term Forecasting': 'forecasting',
+          'What If & Scenario Analyst': 'whatif',
+          'Onboarding': 'general'
+        };
+        const frontendAgentType = backendToFrontendAgent[agentType] || 'general';
 
-      // Fallback: always provide actionable next steps if none parsed
-      if (suggestions.length === 0) {
-        // Onboarding/first prompt: show clear, beginner-friendly actions
-        if (!state.selectedLob) {
+        // Generate suggestions based on agent type
+        let suggestions: string[] = [];
+        if (frontendAgentType === 'eda') {
           suggestions = [
-            "Upload your sales data",
-            "Show me a sample analysis",
-            "What can I do with this app?",
-            "How do I generate a forecast?",
-            "Explore my data"
-          ];
-        } else if (agentType === 'eda') {
-          suggestions = [
-            "Explore your data (EDA)",
             "Generate a forecast for the next 30 days",
-            "Download a summary report"
+            "Check for outliers",
+            "Explore data patterns"
           ];
-        } else if (agentType === 'forecasting') {
+        } else if (frontendAgentType === 'forecasting') {
           suggestions = [
-            "See forecast results",
+            "View forecast results",
             "Download forecast report",
             "Try a different forecast period"
           ];
-        } else if (agentType === 'evaluation') {
-          suggestions = [
-            "Compare model performance",
-            "Download evaluation report"
-          ];
         } else {
           suggestions = [
-            "Upload your data",
             "Explore your data",
             "Generate a forecast",
             "Download a report"
           ];
         }
-      }
-      
-      // Auto-detect visualization needs
-      const shouldVisualize = state.selectedLob?.hasData && state.selectedLob?.timeSeriesData &&
-        (/(visuali[sz]e|chart|plot|graph|trend|distribution)/i.test(messageText + content) ||
-         (agentType === 'eda' && /pattern|trend|seasonality/i.test(content)));
 
-      let visualization: { data: WeeklyData[]; target: "Value" | "Orders"; isShowing: boolean; showOutliers?: boolean } | undefined;
-      if (shouldVisualize) {
-        const isRevenue = /(revenue|sales|amount|gmv|income)/i.test(messageText + content);
-        const wantsOutliers = /(outlier|anomal|quality\s*check)/i.test(messageText);
-        visualization = {
-          data: state.selectedLob!.timeSeriesData!,
-          target: isRevenue ? 'Value' : 'Orders',
-          isShowing: false,
-          showOutliers: wantsOutliers
-        };
-      }
+        // Auto-detect visualization needs
+        const shouldVisualize = state.selectedLob?.hasData && state.selectedLob?.timeSeriesData &&
+          (/(visuali[sz]e|chart|plot|graph|trend|distribution)/i.test(messageText + responseText) ||
+           (frontendAgentType === 'eda' && /pattern|trend|seasonality/i.test(responseText)));
 
-      // Track analysis completion and extract data
-      if (agentType === 'eda') {
-        // Extract outliers from EDA response
-        const outliers = extractOutliersFromResponse(responseText, state.selectedLob?.timeSeriesData);
-        dispatch({ 
-          type: 'SET_ANALYZED_DATA', 
-          payload: { 
-            hasEDA: true, 
-            lastAnalysisType: 'eda',
-            outliers: outliers
-          } 
-        });
-      } else if (agentType === 'forecasting') {
-        // Extract forecast data from forecasting response
-        const forecastData = extractForecastDataFromResponse(responseText, state.selectedLob?.timeSeriesData);
-        dispatch({ 
-          type: 'SET_ANALYZED_DATA', 
-          payload: { 
-            hasForecasting: true, 
-            lastAnalysisType: 'forecasting',
-            forecastData: forecastData
-          } 
-        });
-      } else if (agentType === 'comparative' || agentType === 'whatif') {
-        dispatch({ type: 'SET_ANALYZED_DATA', payload: { hasInsights: true, lastAnalysisType: agentType } });
-      }
-
-      // Update message
-      dispatch({ 
-        type: 'UPDATE_LAST_MESSAGE', 
-        payload: {
-          content,
-          suggestions,
-          isTyping: false,
-          visualization,
-          agentType,
-          canGenerateReport: !!reportData,
-          reportData
+        let visualization: { data: WeeklyData[]; target: "Value" | "Orders"; isShowing: boolean; showOutliers?: boolean } | undefined;
+        if (shouldVisualize) {
+          const isRevenue = /(revenue|sales|amount|gmv|income)/i.test(messageText + responseText);
+          const wantsOutliers = /(outlier|anomal|quality\s*check)/i.test(messageText);
+          visualization = {
+            data: state.selectedLob!.timeSeriesData!,
+            target: isRevenue ? 'Value' : 'Orders',
+            isShowing: false,
+            showOutliers: wantsOutliers
+          };
         }
-      });
+
+        // Track analysis completion
+        if (frontendAgentType === 'eda') {
+          const outliers = extractOutliersFromResponse(responseText, state.selectedLob?.timeSeriesData);
+          dispatch({ 
+            type: 'SET_ANALYZED_DATA', 
+            payload: { 
+              hasEDA: true, 
+              lastAnalysisType: 'eda',
+              outliers: outliers
+            } 
+          });
+        } else if (frontendAgentType === 'forecasting') {
+          const forecastData = extractForecastDataFromResponse(responseText, state.selectedLob?.timeSeriesData);
+          dispatch({ 
+            type: 'SET_ANALYZED_DATA', 
+            payload: { 
+              hasForecasting: true, 
+              lastAnalysisType: 'forecasting',
+              forecastData: forecastData
+            } 
+          });
+        }
+
+        // Update message with response
+        dispatch({ 
+          type: 'UPDATE_LAST_MESSAGE', 
+          payload: {
+            content: responseText,
+            suggestions,
+            isTyping: false,
+            visualization,
+            agentType: frontendAgentType,
+            canGenerateReport: false
+          }
+        });
+
+      } else if (finalStatus.status === 'error') {
+        // Handle error
+        const errorMessage = finalStatus.error_message || 'Unknown error occurred';
+        dispatch({ 
+          type: 'UPDATE_LAST_MESSAGE', 
+          payload: {
+            content: `❌ **Error from Python backend:**\n\n${errorMessage}\n\n**Troubleshooting:**\n• Make sure Python backend is running on port 8000\n• Check that OPENAI_API_KEY is set\n• Verify Redis is running\n\nTry again or contact support.`,
+            isTyping: false,
+            agentType: 'general',
+            suggestions: ['Check backend status', 'Try again', 'Contact support']
+          }
+        });
+        dispatch({ type: 'SET_PROCESSING', payload: false });
+      }
 
     } catch (error) {
-      console.error("AI Error:", error);
+      console.error("Python Backend Error:", error);
+      dispatch({ type: 'CLEAR_THINKING_STEPS' });
+      
+      let errorMessage = "Sorry, I'm having trouble connecting to the AI service.";
+      let suggestions = ['Check backend status', 'Try again', 'Contact support'];
+
+      if (error instanceof PythonBackendError) {
+        if (error.errorCode === 'CONNECTION_ERROR') {
+          errorMessage = `❌ **Cannot connect to Python backend**\n\n**Issue:** The Python backend at port 8000 is not responding.\n\n**Solutions:**\n1. Start the Python backend:\n   \`\`\`bash\n   cd newgpt/backend_agent\n   python3 -m uvicorn main:app --reload --port 8000\n   \`\`\`\n2. Make sure Redis is running:\n   \`\`\`bash\n   redis-server\n   \`\`\`\n3. Check that OPENAI_API_KEY is set in your environment\n\n**Need help?** Check the IMPLEMENTATION_SUMMARY.md file for setup instructions.`;
+          suggestions = ['View setup guide', 'Check logs', 'Contact support'];
+        } else if (error.errorCode === 'VALIDATION_ERROR') {
+          errorMessage = `❌ **Validation Error**\n\n${error.message}\n\nPlease check your input and try again.`;
+          suggestions = ['Fix input', 'Try different query'];
+        } else if (error.errorCode === 'SYSTEM_OVERLOADED') {
+          errorMessage = `⚠️ **System Overloaded**\n\nThe AI service is currently processing too many requests. Please wait a moment and try again.`;
+          suggestions = ['Wait and retry', 'Try simpler query'];
+        } else {
+          errorMessage = `❌ **Backend Error**\n\n${error.message}`;
+        }
+      } else if (error instanceof TaskTimeoutError) {
+        errorMessage = `⏱️ **Task Timeout**\n\nThe request took longer than 4 minutes and was cancelled. This might happen with complex analyses.\n\n**Suggestions:**\n• Try a simpler query\n• Break down complex requests\n• Check backend logs for issues`;
+        suggestions = ['Try simpler query', 'Check logs', 'Contact support'];
+      }
+
       dispatch({ 
         type: 'UPDATE_LAST_MESSAGE', 
         payload: {
-          content: "Sorry, I'm having trouble right now. Please try again.",
+          content: errorMessage,
           isTyping: false,
-          agentType: 'general'
+          agentType: 'general',
+          suggestions
         }
       });
       dispatch({ type: 'SET_PROCESSING', payload: false });
