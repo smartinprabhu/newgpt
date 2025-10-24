@@ -893,6 +893,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.sessionId]);
 
+  // Store selected BU in localStorage for API client access
+  useEffect(() => {
+    if (state.selectedBu) {
+      localStorage.setItem('current_bu', state.selectedBu.displayName || state.selectedBu.name);
+    } else {
+      localStorage.removeItem('current_bu');
+    }
+  }, [state.selectedBu]);
+
+  // Store selected LOB in localStorage for API client access
+  useEffect(() => {
+    if (state.selectedLob) {
+      localStorage.setItem('current_lob', state.selectedLob.name);
+    } else {
+      localStorage.removeItem('current_lob');
+    }
+  }, [state.selectedLob]);
+
   // Check for agent launch context from Frontend on mount
   useEffect(() => {
     const agentContextStr = localStorage.getItem('agentLaunchContext');
