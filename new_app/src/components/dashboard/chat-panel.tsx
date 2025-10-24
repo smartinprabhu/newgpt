@@ -195,8 +195,6 @@ What sounds most useful to you?"`
     }
 };
 
-let chatHandler: MultiAgentChatHandler | null = null;
-
 // Helper function to map frontend agent types to backend agent types
 function mapAgentTypeToBackend(frontendAgentType: string): string {
   const agentMapping: Record<string, string> = {
@@ -481,11 +479,6 @@ export default function ChatPanel({ className }: { className?: string }) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize chat handler
-  if (!chatHandler) {
-    chatHandler = new MultiAgentChatHandler(dispatch);
-  }
-  
   // Auto-scroll to bottom
   useEffect(() => {
     const scrollElement = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
