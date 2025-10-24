@@ -553,6 +553,44 @@ async def delete_lob_data(business_unit: str, line_of_business: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/lob/index")
+async def get_lob_index():
+    """
+    Get index of all available BU/LOBs in Redis
+    This shows what data was pre-fetched from Zentere on startup
+    
+    Returns:
+    - List of available BU codes
+    - Total counts and metadata
+    """
+    try:
+        index = await redis_manager.get_zentere_index()
+        
+        if not index:
+            return {
+                "available": False,
+                "message": "No Zentere data loaded. Backend may be starting up or failed to fetch data.",
+                "business_units": [],
+                "total_bus": 0,
+                "total_lobs": 0,
+                "total_records": 0
+            }
+        
+        return {
+            "available": True,
+            "message": "Zentere data available",
+            "business_units": index.get("business_units", []),
+            "total_bus": index.get("total_bus", 0),
+            "total_lobs": index.get("total_lobs", 0),
+            "total_records": index.get("total_records", 0),
+            "last_updated": index.get("last_updated")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving LOB index: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
