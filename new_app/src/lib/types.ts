@@ -373,3 +373,52 @@ export type ProcessedValueData = {
     total: number;
   };
 };
+
+// Python Backend Integration Types
+export type AgentRequest = {
+  prompt: string;
+  businessUnit: string;
+  lineOfBusiness: string;
+  suggestedAgentType?: string;
+  sessionId?: string;
+  context?: {
+    conversationHistory?: Array<{ role: string; content: string }>;
+    userPreferences?: any;
+  };
+};
+
+export type AgentTaskResponse = {
+  success: boolean;
+  task_id: string;
+  estimated_duration: string;
+  message: string;
+};
+
+export type BackendWorkflowStep = {
+  step_number: number;
+  agent_name: string;
+  agent_type: string;
+  status: string;
+  start_time: string;
+  end_time: string;
+  duration_ms: number;
+  output_summary: string;
+};
+
+export type TaskStatusResponse = {
+  task_id: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  progress: string;
+  current_agent: string | null;
+  percentage: number;
+  result?: {
+    response: string;
+    session_id: string;
+    agent_type: string;
+    workflow_steps: BackendWorkflowStep[];
+    execution_time: number;
+    metadata?: any;
+  };
+  error_message?: string;
+  error_code?: string;
+};
