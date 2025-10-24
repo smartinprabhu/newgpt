@@ -14,6 +14,7 @@ import type { ChatMessage, WeeklyData, WorkflowStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import AgentMonitorPanel from './agent-monitor';
 import DataVisualizer from './data-visualizer';
+import { getPythonAgentClient, PythonBackendError } from '@/lib/python-agent-client';
 
 type AgentConfig = {
   name: string;
@@ -22,13 +23,6 @@ type AgentConfig = {
   keywords: string[];
   systemPrompt: string;
 };
-
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-});
 
 export const AGENTS: Record<string, AgentConfig> = {
   eda: {
