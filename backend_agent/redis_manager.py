@@ -467,7 +467,7 @@ class RedisContextManager:
             if not task_data:
                 return None
 
-            # Deserialize JSON fields
+            # Deserialize JSON fields and handle missing fields
             return {
                 "task_id": task_data.get("task_id"),
                 "status": task_data.get("status"),
