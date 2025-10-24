@@ -150,7 +150,8 @@ class WorkflowOrchestrator:
         business_unit: str,
         line_of_business: str,
         user_prompt: str,
-        conversation_context: Optional[Dict[str, Any]] = None
+        conversation_context: Optional[Dict[str, Any]] = None,
+        lob_dataset: Optional[Dict[str, Any]] = None
     ) -> str:
         """Create context-aware prompt for agents"""
         
@@ -158,10 +159,27 @@ class WorkflowOrchestrator:
             "**Business Context:**",
             f"- Business Unit: {business_unit}",
             f"- Line of Business: {line_of_business}",
-            "",
+            ""
+        ]
+        
+        # Add LOB dataset information if available
+        if lob_dataset:
+            row_count = len(lob_dataset.get("rows", [])) if isinstance(lob_dataset.get("rows"), list) else 0
+            columns = lob_dataset.get("columns", [])
+            column_count = len(columns) if isinstance(columns, list) else 0
+            
+            context_parts.extend([
+                "**LOB Dataset Available:**",
+                f"- Dataset has {row_count} rows and {column_count} columns",
+                f"- Columns: {', '.join(columns[:10]) if columns else 'N/A'}{'...' if len(columns) > 10 else ''}",
+                "- Full dataset is available for analysis",
+                ""
+            ])
+        
+        context_parts.extend([
             "**User Request:**",
             user_prompt
-        ]
+        ])
         
         # Add conversation history context if available
         if conversation_context and conversation_context.get("similar_conversations"):
@@ -178,10 +196,15 @@ class WorkflowOrchestrator:
             "",
             "**Important Guidelines:**",
             f"1. Always reference the specific Business Unit ({business_unit}) and LOB ({line_of_business}) in your response",
-            "2. Provide specific, actionable insights - not generic advice",
-            "3. If you need data to provide accurate analysis, clearly state what data you need",
-            "4. Be concise but comprehensive"
+            "2. Provide specific, actionable insights - not generic advice"
         ])
+        
+        if lob_dataset:
+            context_parts.append("3. Use the LOB dataset provided in context to perform analysis")
+            context_parts.append("4. Be concise but comprehensive")
+        else:
+            context_parts.append("3. If you need data to provide accurate analysis, clearly state what data you need")
+            context_parts.append("4. Be concise but comprehensive")
         
         return "\n".join(context_parts)
 
@@ -210,7 +233,8 @@ class WorkflowOrchestrator:
                 state['business_unit'],
                 state['line_of_business'],
                 state['user_prompt'],
-                state.get('conversation_context')
+                state.get('conversation_context'),
+                state.get('metadata', {}).get('lob_dataset')
             )
             
             # Run agent synchronously (phidata agents are sync)
