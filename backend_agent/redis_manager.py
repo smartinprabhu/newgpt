@@ -631,9 +631,39 @@ class RedisContextManager:
             data_key = f"lob:{business_unit}:{line_of_business}:data"
             meta_key = f"lob:{business_unit}:{line_of_business}:meta"
 
+            logger.info(f"🔍 RETRIEVING LOB DATA:")
+            logger.info(f"   Business Unit: {business_unit}")
+            logger.info(f"   Line of Business: {line_of_business}")
+            logger.info(f"   Redis Key: {data_key}")
+
             # Get LOB data
             lob_data_json = await client.get(data_key)
             if not lob_data_json:
+                logger.warning(f"   ❌ NO DATA FOUND in Redis for key: {data_key}")
+                
+                # Debug: Check what keys exist
+                pattern = f"lob:{business_unit}:*"
+                logger.info(f"   🔍 Checking what keys exist with pattern: {pattern}")
+                keys_found = []
+                async for key in client.scan_iter(match=pattern, count=10):
+                    keys_found.append(key)
+                
+                if keys_found:
+                    logger.info(f"   📋 Found these keys for {business_unit}: {keys_found[:5]}")
+                else:
+                    logger.warning(f"   ⚠️ No keys found for {business_unit} at all!")
+                    
+                    # Check if ANY lob keys exist
+                    logger.info(f"   🔍 Checking if ANY lob: keys exist...")
+                    all_lob_keys = []
+                    async for key in client.scan_iter(match="lob:*", count=10):
+                        all_lob_keys.append(key)
+                    
+                    if all_lob_keys:
+                        logger.info(f"   📋 Sample of existing lob: keys: {all_lob_keys[:5]}")
+                    else:
+                        logger.error(f"   ❌ NO LOB DATA EXISTS IN REDIS AT ALL!")
+                
                 return None
 
             # Refresh TTL (auto-refresh on access)
@@ -641,7 +671,10 @@ class RedisContextManager:
             await client.expire(meta_key, 86400)
 
             lob_data = json.loads(lob_data_json)
-            logger.info(f"LOB data retrieved: {business_unit}/{line_of_business}")
+            row_count = len(lob_data.get("rows", []))
+            logger.info(f"   ✅ DATA FOUND: {row_count} rows")
+            logger.info(f"   Columns: {lob_data.get('columns', [])}")
+            
             return lob_data
 
         except Exception as e:
@@ -738,6 +771,10 @@ class RedisContextManager:
         try:
             client = await self.get_client()
             
+            logger.info("=" * 80)
+            logger.info("📦 STORING ZENTERE DATA IN REDIS")
+            logger.info("=" * 80)
+            
             total_bus = len(organized_data)
             total_lobs = 0
             total_records = 0
@@ -745,6 +782,7 @@ class RedisContextManager:
             # Store each BU and its LOBs
             for bu_code, bu_data in organized_data.items():
                 lobs = bu_data.get("lobs", {})
+                logger.info(f"📁 Business Unit: {bu_code} ({bu_data.get('name')})")
                 
                 for lob_code, lob_data in lobs.items():
                     data_records = lob_data.get("data", [])
@@ -763,6 +801,9 @@ class RedisContextManager:
                     # Store LOB data
                     data_key = f"lob:{bu_code}:{lob_code}:data"
                     meta_key = f"lob:{bu_code}:{lob_code}:meta"
+
+                    logger.info(f"  💾 Storing LOB: {lob_code} ({lob_data.get('name')}) - {len(data_records)} records")
+                    logger.info(f"     Redis Key: {data_key}")
 
                     # Store data with TTL (24 hours)
                     await client.setex(
@@ -799,7 +840,9 @@ class RedisContextManager:
             }
             await client.setex(index_key, 86400, json.dumps(index_data))
 
+            logger.info("=" * 80)
             logger.info(f"✅ Stored Zentere data in Redis: {total_bus} BUs, {total_lobs} LOBs, {total_records} records")
+            logger.info("=" * 80)
             return True
 
         except Exception as e:
