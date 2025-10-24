@@ -25,7 +25,7 @@ class AgentFactory:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")
 
-        self.default_model = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
+        self.default_model = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
         logger.info(f"AgentFactory initialized with model: {self.default_model}")
 
     def _create_base_agent(
