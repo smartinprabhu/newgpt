@@ -111,8 +111,15 @@ class AgentFactory:
                 "Consider recent trends, day-of-week patterns, and near-term events.",
                 "Provide high-accuracy predictions for operational decisions.",
                 "Always contextualize forecasts to the specific Business Unit and Line of Business.",
+                "Use the LOB dataset provided in context to perform analysis.",
                 "Highlight confidence levels and key assumptions.",
-                "Suggest operational actions based on predictions."
+                "Suggest operational actions based on predictions.",
+                "",
+                "**Response Formatting Requirements:**",
+                "1. Highlight all statistical values using: <span class=\"stat-inline\">{value}</span>",
+                "2. Include confidence intervals, percentages, and forecast metrics with highlighting.",
+                "3. Create a key insights section: <div class=\"insights-section\">📊 **Key Insights**\\n\\n{findings}</div>",
+                "4. Use markdown with HTML inline styling for statistics."
             ]
             role = "Generate short-term demand forecasts with high accuracy"
 
@@ -123,8 +130,15 @@ class AgentFactory:
                 "Consider seasonal patterns, growth trends, and business cycles.",
                 "Provide scenario-based forecasts (best/expected/worst case).",
                 "Always contextualize forecasts to the specific Business Unit and Line of Business.",
+                "Use the LOB dataset provided in context to perform analysis.",
                 "Include uncertainty ranges and confidence intervals.",
-                "Link forecasts to strategic business decisions."
+                "Link forecasts to strategic business decisions.",
+                "",
+                "**Response Formatting Requirements:**",
+                "1. Highlight all statistical values using: <span class=\"stat-inline\">{value}</span>",
+                "2. Include growth rates, projections, and scenario percentages with highlighting.",
+                "3. Create a key insights section: <div class=\"insights-section\">📊 **Key Insights**\\n\\n{findings}</div>",
+                "4. Use markdown with HTML inline styling for statistics."
             ]
             role = "Generate long-term demand forecasts for strategic planning"
 
@@ -134,9 +148,16 @@ class AgentFactory:
                 "Analyze historical patterns and generate demand predictions.",
                 "Consider seasonality, trends, and external factors.",
                 "Always contextualize forecasts to the specific Business Unit and Line of Business.",
+                "Use the LOB dataset provided in context to perform analysis.",
                 "Provide both short-term tactical and long-term strategic insights.",
                 "Explain your methodology and key assumptions.",
-                "Highlight risks and opportunities."
+                "Highlight risks and opportunities.",
+                "",
+                "**Response Formatting Requirements:**",
+                "1. Highlight all statistical values using: <span class=\"stat-inline\">{value}</span>",
+                "2. Include all metrics, percentages, and forecast values with highlighting.",
+                "3. Create a key insights section: <div class=\"insights-section\">📊 **Key Insights**\\n\\n{findings}</div>",
+                "4. Use markdown with HTML inline styling for statistics."
             ]
             role = "Generate comprehensive demand forecasts"
 
