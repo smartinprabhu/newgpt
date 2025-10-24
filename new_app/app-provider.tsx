@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { BusinessUnit, LineOfBusiness, ChatMessage, WorkflowStep } from '@/lib/types';
 import { getAPIClient } from '@/lib/api-client';
+import { getPythonAgentClient } from '@/lib/python-agent-client';
 import type { AgentMonitorProps } from '@/lib/types';
 
 type OnboardingStep =
