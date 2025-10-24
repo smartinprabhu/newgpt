@@ -49,6 +49,52 @@ redis_manager = RedisContextManager()
 orchestrator = WorkflowOrchestrator(redis_manager)
 
 
+# Startup event: Fetch and store Zentere data
+@app.on_event("startup")
+async def startup_event():
+    """
+    Fetch all BU/LOB data from Zentere API on startup
+    Store everything in Redis for agent access
+    """
+    logger.info("=" * 80)
+    logger.info("🚀 BACKEND STARTUP: Fetching Zentere Data")
+    logger.info("=" * 80)
+    
+    try:
+        from zentere_client import fetch_and_organize_zentere_data
+        
+        # Fetch all data from Zentere API
+        logger.info("📡 Connecting to Zentere API (app-api-dev.zentere.com)...")
+        organized_data = await fetch_and_organize_zentere_data(
+            username="martin@demo.com",
+            password="demo"
+        )
+        
+        if not organized_data:
+            logger.warning("⚠️ No data fetched from Zentere API - agents will have limited capabilities")
+            return
+        
+        # Store in Redis
+        logger.info("💾 Storing all BU/LOB data in Redis...")
+        success = await redis_manager.store_all_zentere_data(organized_data)
+        
+        if success:
+            logger.info("✅ Zentere data successfully loaded and ready for agents!")
+            
+            # Log summary
+            index = await redis_manager.get_zentere_index()
+            if index:
+                logger.info(f"📊 Available: {index['total_bus']} BUs, {index['total_lobs']} LOBs, {index['total_records']} records")
+        else:
+            logger.error("❌ Failed to store Zentere data in Redis")
+            
+    except Exception as e:
+        logger.error(f"❌ Startup data fetch failed: {str(e)}", exc_info=True)
+        logger.warning("⚠️ Backend will start but agents may not have access to LOB data")
+    
+    logger.info("=" * 80)
+
+
 # Request/Response Models
 class BusinessUnitModel(BaseModel):
     id: Optional[int] = None
